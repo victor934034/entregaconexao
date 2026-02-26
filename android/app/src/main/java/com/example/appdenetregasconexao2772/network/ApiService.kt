@@ -9,6 +9,9 @@ interface ApiService {
     @POST("api/auth/login")
     suspend fun login(@Body request: Map<String, String>): Response<LoginResponse>
 
+    @POST("api/auth/registrar")
+    suspend fun registrar(@Body request: Map<String, String>): Response<LoginResponse>
+
     @GET("api/pedidos")
     suspend fun getPedidos(@Query("status") status: String? = null): Response<List<Pedido>>
 

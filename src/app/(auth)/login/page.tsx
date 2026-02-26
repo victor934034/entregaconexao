@@ -8,6 +8,7 @@ import { Truck } from 'lucide-react';
 export default function Login() {
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
+    const [perfil, setPerfil] = useState<'ADM' | 'ENTREGADOR'>('ADM');
     const [erro, setErro] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
@@ -21,9 +22,14 @@ export default function Login() {
             const response = await api.post('/auth/login', { email, senha });
             const { token, usuario } = response.data;
 
-            // Bloquear entregador no painel web
-            if (usuario.perfil === 'ENTREGADOR') {
-                setErro('Acesso restrito. Entregadores devem usar o aplicativo.');
+            // Validar se o perfil bate com o selecionado (opcional para segurança visual)
+            if (perfil === 'ADM' && !['SUPER_ADM', 'ADM'].includes(usuario.perfil)) {
+                setErro('Este acesso é exclusivo para administradores.');
+                return;
+            }
+
+            if (perfil === 'ENTREGADOR' && usuario.perfil !== 'ENTREGADOR') {
+                setErro('Este acesso é exclusivo para entregadores.');
                 return;
             }
 
@@ -38,12 +44,27 @@ export default function Login() {
     return (
         <div className="flex min-h-screen items-center justify-center bg-gray-50">
             <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
-                <div className="flex flex-col items-center mb-8">
+                <div className="flex flex-col items-center mb-6">
                     <div className="w-16 h-16 bg-blue-700 text-white rounded-full flex items-center justify-center mb-4">
                         <Truck size={32} />
                     </div>
                     <h1 className="text-2xl font-bold text-gray-900">Conexão BR277</h1>
-                    <p className="text-gray-500">Gestão de Entregas</p>
+                    <p className="text-gray-500 text-center">Gestão de Entregas</p>
+                </div>
+
+                <div className="flex bg-gray-100 p-1 rounded-lg mb-6">
+                    <button
+                        onClick={() => setPerfil('ADM')}
+                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${perfil === 'ADM' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Administrador
+                    </button>
+                    <button
+                        onClick={() => setPerfil('ENTREGADOR')}
+                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${perfil === 'ENTREGADOR' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Entregador
+                    </button>
                 </div>
 
                 {erro && (
@@ -86,6 +107,17 @@ export default function Login() {
                         {loading ? 'Acessando...' : 'Entrar'}
                     </button>
                 </form>
+
+                {perfil === 'ENTREGADOR' && (
+                    <div className="mt-6 text-center">
+                        <p className="text-sm text-gray-600">
+                            Ainda não tem conta?{' '}
+                            <a href="/registrar" className="text-blue-700 font-semibold hover:underline">
+                                Cadastre-se aqui
+                            </a>
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );
