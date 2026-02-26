@@ -33,17 +33,8 @@ class LoginActivity : AppCompatActivity() {
         val etEmail = findViewById<EditText>(R.id.etEmail)
         val etSenha = findViewById<EditText>(R.id.etSenha)
         val btnLogin = findViewById<Button>(R.id.btnLogin)
-        val rgPerfil = findViewById<android.widget.RadioGroup>(R.id.rgPerfil)
         val tvRegistrar = findViewById<android.widget.TextView>(R.id.tvRegistrar)
         val progressBar = findViewById<ProgressBar>(R.id.progressBar)
-
-        rgPerfil.setOnCheckedChangeListener { _, checkedId ->
-            if (checkedId == R.id.rbEntregador) {
-                tvRegistrar.visibility = View.VISIBLE
-            } else {
-                tvRegistrar.visibility = View.GONE
-            }
-        }
 
         tvRegistrar.setOnClickListener {
             startActivity(Intent(this, RegisterActivity::class.java))
@@ -55,13 +46,10 @@ class LoginActivity : AppCompatActivity() {
             
             result.onSuccess {
                 val usuario = it.usuario
-                val rbEntregador = findViewById<android.widget.RadioButton>(R.id.rbEntregador)
                 
-                // Validação de perfil (mesma lógica da web)
-                if (rbEntregador.isChecked && usuario.perfil != "ENTREGADOR") {
-                    Toast.makeText(this, "Este acesso é exclusivo para entregadores", Toast.LENGTH_LONG).show()
-                } else if (!rbEntregador.isChecked && usuario.perfil == "ENTREGADOR") {
-                    Toast.makeText(this, "Este acesso é exclusivo para administradores", Toast.LENGTH_LONG).show()
+                // Validação de perfil fixa (App é apenas para Entregadores)
+                if (usuario.perfil != "ENTREGADOR") {
+                    Toast.makeText(this, "Apenas entregadores acessam este App. Administradores devem usar o Painel Web.", Toast.LENGTH_LONG).show()
                 } else {
                     Toast.makeText(this, "Bem-vindo!", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this, PedidosActivity::class.java))
