@@ -5,7 +5,11 @@ WORKDIR /app
 
 # Instala dependências a partir da pasta backend
 COPY backend/package.json backend/package-lock.json* ./
-RUN npm install
+
+# Necessário para compilar o bcrypt no Alpine
+RUN apk add --no-cache make gcc g++ python3 && \
+    npm install && \
+    apk del make gcc g++ python3
 
 # Copia o código fonte da pasta backend
 COPY backend/ .
