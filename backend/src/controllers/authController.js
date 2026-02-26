@@ -80,3 +80,40 @@ exports.alterarSenha = async (req, res) => {
         res.status(500).json({ error: 'Erro ao alterar a senha.' });
     }
 };
+
+exports.registrar = async (req, res) => {
+    try {
+        const { nome, email, senha } = req.body;
+
+        const existe = await Usuario.findOne({ where: { email } });
+        if (existe) {
+            return res.status(400).json({ error: 'Este e-mail já está sendo usado.' });
+        }
+
+        const salt = await bcrypt.genSalt(12);
+        const senha_hash = await bcrypt.hash(senha, salt);
+
+        const usuario = await Usuario.create({
+            nome,
+            email,
+            senha_hash,
+            perfil: 'ENTREGADOR',
+            ativo: true
+        });
+
+        const token = jwt.sign({ id: usuario.id, perfil: usuario.perfil });
+
+        return res.status(201).json({
+            token,
+            usuario: {
+                id: usuario.id,
+                nome: usuario.nome,
+                email: usuario.email,
+                perfil: usuario.perfil
+            }
+        });
+    } catch (error) {
+        console.error('Erro no registro:', error);
+        res.status(500).json({ error: 'Erro ao realizar cadastro.' });
+    }
+};
