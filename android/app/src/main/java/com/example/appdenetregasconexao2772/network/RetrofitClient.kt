@@ -7,7 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "http://10.0.2.2:3000/" // Default local android emulator IP to host
+    private const val BASE_URL = "https://app-backend.zdc13k.easypanel.host/"
 
     fun create(context: Context): ApiService {
         val client = OkHttpClient.Builder()

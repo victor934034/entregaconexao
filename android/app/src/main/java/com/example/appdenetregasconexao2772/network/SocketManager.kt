@@ -5,7 +5,7 @@ import io.socket.client.Socket
 import java.net.URISyntaxException
 
 object SocketManager {
-    private const val SOCKET_URL = "http://10.0.2.2:3000"
+    private const val SOCKET_URL = "https://app-backend.zdc13k.easypanel.host"
     private var mSocket: Socket? = null
 
     init {
