@@ -10,27 +10,22 @@ const server = http.createServer(app);
 // Inicializar Socket.io
 socketService.init(server);
 
-// Função para iniciar o servidor
-const startServer = () => {
-    server.listen(PORT, () => {
-        console.log(`Servidor rodando na porta ${PORT}`);
-        console.log('Ambiente:', process.env.NODE_ENV);
-    });
-};
+// Iniciar o servidor IMEDIATAMENTE para evitar 502/Bad Gateway no EasyPanel
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor backend rodando em http://0.0.0.0:${PORT}`);
+    console.log('--- Iniciando conexão com o Banco de Dados ---');
+});
 
-// Tentar conectar e sincronizar
+// Tentar conectar e sincronizar em segundo plano
 sequelize.authenticate()
     .then(() => {
-        console.log('Banco de dados conectado com sucesso.');
+        console.log('✅ Banco de dados conectado com sucesso.');
         return sequelize.sync({ alter: false });
     })
     .then(() => {
-        console.log('Tabelas sincronizadas.');
-        startServer();
+        console.log('✅ Tabelas sincronizadas.');
     })
     .catch(err => {
-        console.error('ERRO CRÍTICO NO BANCO DE DADOS:', err.message);
-        console.log('Verifique as variáveis de ambiente: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD');
-        // Inicia o servidor mesmo assim para o container não crashar e podermos ver os logs
-        startServer();
+        console.error('❌ ERRO NO BANCO DE DADOS:', err.message);
+        console.log('⚠️ O servidor continuará rodando para debug, mas as requisições ao banco falharão.');
     });
