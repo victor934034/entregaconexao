@@ -1,11 +1,10 @@
 node_modules
 .git
 .env
-android
-database
-web
-src/web
-src/android
-public
 dist
 .next
+.dockerignore
+Dockerfile
+Docker
+android
+database
