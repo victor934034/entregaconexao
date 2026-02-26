@@ -38,7 +38,13 @@ class RegisterViewModel(application: Application) : AndroidViewModel(application
                     _registerResult.value = Result.success(body)
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    _registerResult.value = Result.failure(Exception("Falha no cadastro: $errorBody"))
+                    val errorMessage = try {
+                        val json = org.json.JSONObject(errorBody)
+                        json.optString("error", "Erro desconhecido")
+                    } catch (e: Exception) {
+                        "Falha no servidor (${response.code()})"
+                    }
+                    _registerResult.value = Result.failure(Exception(errorMessage))
                 }
             } catch (e: Exception) {
                 _registerResult.value = Result.failure(Exception("Erro de conexão: ${e.message}"))

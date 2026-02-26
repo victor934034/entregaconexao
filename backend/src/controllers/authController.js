@@ -84,9 +84,16 @@ exports.alterarSenha = async (req, res) => {
 exports.registrar = async (req, res) => {
     try {
         const { nome, email, senha } = req.body;
+        console.log(`📝 Nova tentativa de cadastro: ${nome} <${email}>`);
+
+        if (!nome || !email || !senha) {
+            console.log('❌ Falha: Dados incompletos');
+            return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+        }
 
         const existe = await Usuario.findOne({ where: { email } });
         if (existe) {
+            console.log(`❌ Falha: E-mail ${email} já cadastrado`);
             return res.status(400).json({ error: 'Este e-mail já está sendo usado.' });
         }
 
