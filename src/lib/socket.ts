@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client';
 
-const URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+const URL = 'https://app-backend.zdc13k.easypanel.host';
 
 export const socket = io(URL, {
     autoConnect: false,
+    transports: ['websocket', 'polling'] // Garantir suporte a ambos
 });
