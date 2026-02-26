@@ -5,13 +5,16 @@ const { Usuario, SessaoRevogada } = require('../models');
 exports.login = async (req, res) => {
     try {
         const { email, senha } = req.body;
+        console.log(`🔐 Tentativa de login para: ${email}`);
 
         const usuario = await Usuario.findOne({ where: { email } });
         if (!usuario) {
+            console.log(`❌ Usuário não encontrado: ${email}`);
             return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
         }
 
         if (!usuario.ativo) {
+            console.log(`⚠️ Usuário inativo: ${email}`);
             return res.status(403).json({ error: 'Usuário inativo.' });
         }
 

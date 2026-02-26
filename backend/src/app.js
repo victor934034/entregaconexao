@@ -5,9 +5,13 @@ require('dotenv').config();
 
 const app = express();
 
-// Middleware de Log para depuração no EasyPanel
+// Middleware de Log para depuração profunda no EasyPanel
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} -> ${res.statusCode} (${duration}ms)`);
+    });
     next();
 });
 
