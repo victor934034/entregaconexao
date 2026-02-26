@@ -1,8 +1,17 @@
 import axios from 'axios';
 
-console.log('📡 API BaseURL:', process.env.NEXT_PUBLIC_API_URL || '/api');
+const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+const fallbackURL = isProd
+    ? 'https://app-backend.zdc13k.easypanel.host/api'
+    : '/api';
+
+const baseURL = process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL !== '/api'
+    ? process.env.NEXT_PUBLIC_API_URL
+    : fallbackURL;
+
+console.log('📡 API BaseURL:', baseURL);
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
+    baseURL,
 });
 
 // Interceptor para injetar o token
