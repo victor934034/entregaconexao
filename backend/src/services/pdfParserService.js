@@ -3,13 +3,13 @@ const pdf = require('pdf-parse');
 
 const PATTERNS = {
     numeroPedido: /PEDIDO\s+Nº\s*([\d.]+)/i,
-    dataPedido: /Data:\s*(\d{2}\/\w+\/\d{4}|\d{2}\/\d{2}\/\d{4}|\d{2}\/\d{2}\/\d{2})/i,
+    dataPedido: /Data:\s*(\d{2}\/\d{2}\/\d{4}|\d{2}\/\d{2}\/\d{2}|\d{2}\/[A-Za-z]+\/\d{4})/i,
     dataEntrega: /(?:Previsão Entrega|Data Entrega|Entregar em):\s*(\d{2}\/\d{2}\/\d{4})/i,
     horaEntrega: /(?:Hora Entrega|Horário):\s*(\d{2}:\d{2})/i,
     nomeCliente: /Nome:\s*(?:\d+[-]\s*)?([^/\n\r\d(]+?)(?:\s+-\s+|\s*[/]|Fone:|$)/i,
     formaPagamento: /Forma Pg\n(?:.*\n){3}([A-ZÀ-Ú\s]+)\n/i,
     vencimento: /\(\d\)(\d{2}\/\d{2}\/\d{2})/i,
-    telefone: /CEP:[\d.-]+\s*Fone:\s*([\d\s()-]+?)(?=E-mail|$)/i
+    telefone: /(?:Fone|Celular):\s*([\d\s()-]+?)(?=\s*(?:E-mail|CPF|CNPJ|Endere|CEP|Inscrição|\n|$))/i
 };
 
 function extractField(text, regex, defaultValue = '') {
@@ -67,51 +67,32 @@ function extractTotalLiquido(text) {
 }
 
 function extractTelefoneCliente(text) {
-    // 0. Tentar extrair telefone misturado na mesma linha do Nome
-    const nomeLineMatch = text.match(/Nome:([^\n]+)/i);
-    if (nomeLineMatch) {
-        const foneNoNome = nomeLineMatch[1].match(/(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]*\d{4}/);
-        if (foneNoNome) {
-            const num = foneNoNome[0].replace(/\D/g, '');
-            if (!num.includes('995278067')) {
-                return { value: foneNoNome[0].trim(), confianca: 'alta' };
+    // 0. Tentar extrair telefone misturado na mesma linha do Nome ou logo abaixo (janela de 300 chars)
+    const blockMatch = text.match(/Nome:[\s\S]{1,300}/i);
+    if (blockMatch) {
+        const block = blockMatch[0];
+        // Busca por padrões de telefone (41) 99999-9999 ou 41 9999-9999
+        const foneRegex = /(?:\(?\d{2}\)?\s*)?9?\d{4,5}[-\s]*\d{4}/g;
+        const potentialFones = block.match(foneRegex);
+
+        if (potentialFones) {
+            for (const fone of potentialFones) {
+                const num = fone.replace(/\D/g, '');
+                // Excluir shop phone 995278067
+                if (!num.includes('995278067') && num.length >= 8) {
+                    return { value: fone.trim(), confianca: 'alta' };
+                }
             }
         }
     }
 
-    // 1. Tentar pegar Fone após o Nome
-    const nomeMatch = text.match(/Nome:[\s\S]*?Fone:\s*([\d\s()-]+?)(?=\s*(?:E-mail|CPF|CNPJ|Endere|CEP|Inscrição|\n|$))/i);
-    if (nomeMatch && nomeMatch[1]) {
-        let t = nomeMatch[1].trim();
-        let nums = t.replace(/\D/g, '');
-        // Se caso não for o número da loja (ex: 41 99527-8067)
-        if (!nums.includes('995278067')) {
-            return { value: t, confianca: 'alta' };
-        }
-    }
-
-    // 2. Tentar todos os Fone: e pegar o último que NÃO seja o da loja
+    // 1. Tentar pegar Fone: rotulado especificamente em qualquer parte (exceto da loja)
     const matches = [...text.matchAll(/Fone:\s*([\d\s()-]+?)(?=\s*(?:E-mail|CPF|CNPJ|Endere|CEP|Inscrição|\n|$))/gi)];
-    let lastValid = '';
     for (const m of matches) {
         let t = m[1].trim();
         let nums = t.replace(/\D/g, '');
-        if (!nums.includes('995278067')) {
-            lastValid = t;
-        }
-    }
-
-    if (lastValid) {
-        return { value: lastValid, confianca: 'média' };
-    }
-
-    // 3. Fallback original
-    const oldMatch = text.match(/CEP:[\d.-]+\s*Fone:\s*([\d\s()-]+?)(?=E-mail|$)/i);
-    if (oldMatch && oldMatch[1]) {
-        let t = oldMatch[1].trim();
-        let nums = t.replace(/\D/g, '');
-        if (!nums.includes('995278067')) {
-            return { value: t, confianca: 'baixa' };
+        if (!nums.includes('995278067') && nums.length >= 8) {
+            return { value: t, confianca: 'média' };
         }
     }
 

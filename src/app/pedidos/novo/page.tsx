@@ -69,6 +69,21 @@ export default function NovoPedido() {
         }
     };
 
+    const formatDateForInput = (dateStr: string) => {
+        if (!dateStr) return '';
+        // Converte DD/MM/YYYY para YYYY-MM-DD
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+                return `${year}-${month}-${day}`;
+            }
+        }
+        return dateStr;
+    };
+
     const handleImportPDF = async () => {
         if (!file) return alert('Selecione um arquivo PDF.');
 
@@ -97,11 +112,14 @@ export default function NovoPedido() {
             const dataImportada = verifyTrust(data.dataPedido, 'Data do Pedido');
             let dataSplit = dataImportada.split(' ');
 
+            const dataExtraida = formatDateForInput(dataSplit[0]);
+            const horaExtraida = dataSplit[1] || '';
+
             setForm({
                 ...form,
                 numero_pedido: verifyTrust(data.numeroPedido, 'Número do Pedido'),
-                data_emissao: dataSplit[0] || form.data_emissao,
-                hora_emissao: dataSplit[1] || form.hora_emissao,
+                data_emissao: dataExtraida || new Date().toISOString().split('T')[0],
+                hora_emissao: horaExtraida || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                 nome_cliente: verifyTrust(data.nomeCliente, 'Nome do Cliente'),
                 telefone_cliente: verifyTrust(data.telefoneCliente, 'Telefone do Cliente'),
                 total_liquido: verifyTrust(data.totalLiquido, 'Total Líquido'),
@@ -110,7 +128,7 @@ export default function NovoPedido() {
                 numero_end: data.endereco?.numero || '',
                 bairro: data.endereco?.bairro || '',
                 observacao_endereco: data.endereco?.observacao || '',
-                data_entrega_programada: data.dataEntregaProgramada?.value || '',
+                data_entrega_programada: formatDateForInput(data.dataEntregaProgramada?.value) || '',
                 hora_entrega_programada: data.horaEntregaProgramada?.value || '',
                 itens: data.itens || [],
             });
