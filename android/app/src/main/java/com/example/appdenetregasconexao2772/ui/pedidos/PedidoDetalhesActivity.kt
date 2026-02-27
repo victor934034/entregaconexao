@@ -52,10 +52,10 @@ class PedidoDetalhesActivity : AppCompatActivity() {
     }
 
     private fun preencherTela(pedido: Pedido) {
-        binding.tvNumPedido.text = "Pedido #${pedido.numero_pedido}"
-        binding.tvStatusDetalhe.text = pedido.status
-        binding.tvClienteDetalhe.text = pedido.nome_cliente
-        binding.tvEnderecoDetalhe.text = "${pedido.logradouro}, ${pedido.numero_end} – ${pedido.bairro}"
+        binding.tvNumPedido.text = "Pedido #${pedido.numero_pedido ?: "---"}"
+        binding.tvStatusDetalhe.text = pedido.status ?: "PENDENTE"
+        binding.tvClienteDetalhe.text = pedido.nome_cliente ?: "Sem nome"
+        binding.tvEnderecoDetalhe.text = "${pedido.logradouro ?: "Endereço não informado"}, ${pedido.numero_end ?: ""} – ${pedido.bairro ?: ""}"
 
         // Preenche produtos
         binding.llProdutos.removeAllViews()

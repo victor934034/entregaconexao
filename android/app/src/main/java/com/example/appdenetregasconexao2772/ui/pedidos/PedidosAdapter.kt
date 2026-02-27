@@ -30,10 +30,10 @@ class PedidosAdapter(
 
     override fun onBindViewHolder(holder: PedidoViewHolder, position: Int) {
         val pedido = pedidos[position]
-        holder.tvNumeroPedido.text = "Pedido #${pedido.numero_pedido}"
-        holder.tvStatus.text = pedido.status
-        holder.tvCliente.text = pedido.nome_cliente
-        holder.tvEndereco.text = "${pedido.logradouro}, ${pedido.numero_end} - ${pedido.bairro}"
+        holder.tvNumeroPedido.text = "Pedido #${pedido.numero_pedido ?: "---"}"
+        holder.tvStatus.text = pedido.status ?: "PENDENTE"
+        holder.tvCliente.text = pedido.nome_cliente ?: "Cliente não identificado"
+        holder.tvEndereco.text = "${pedido.logradouro ?: "Endereço não informado"}, ${pedido.numero_end ?: ""} - ${pedido.bairro ?: ""}"
 
         holder.btnAtualizar.setOnClickListener {
             onAtualizarClick(pedido)

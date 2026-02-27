@@ -23,13 +23,14 @@ data class ItemPedido(
 
 data class Pedido(
     val id: Int,
-    val numero_pedido: String,
-    val nome_cliente: String,
-    val logradouro: String,
-    val numero_end: String,
-    val bairro: String,
-    val status: String,
+    val numero_pedido: String?,
+    val nome_cliente: String?,
+    val logradouro: String?,
+    val numero_end: String?,
+    val bairro: String?,
+    val status: String?,
     val total_liquido: Double?,
+    val data_pedido: String? = null,
     val itens: List<ItemPedido>? = null
 )
 

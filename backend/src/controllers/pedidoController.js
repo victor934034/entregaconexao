@@ -173,10 +173,12 @@ exports.pedidosEntregador = async (req, res) => {
         const { uid } = req.params;
         const { Op } = require('sequelize');
 
+        console.log(`[DEBUG_API] Buscando pedidos para UID: ${uid}. Query params:`, req.query);
+
         const where = {
             [Op.or]: [
                 { entregador_id: uid },
-                { [Op.and]: [{ entregador_id: null }, { status: 'PENDENTE' }] }
+                { status: 'PENDENTE' }
             ]
         };
 
