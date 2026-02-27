@@ -1,18 +1,22 @@
 const { Pedido, ItemPedido, HistoricoStatus, Usuario, sequelize } = require('../models');
 const { parsePedidoPdf } = require('../services/pdfParserService');
 const socketService = require('../services/socketService');
+const { Op } = require('sequelize');
 
 exports.listarPedidos = async (req, res) => {
     try {
         const { status, busca, dataInicio, dataFim } = req.query;
 
         const where = {};
-        if (status) where.status = status;
-        // Lógica para busca e datas seria inserida aqui usando operadores do Sequelize (Op)
 
-        // Se for entregador, filtra apenas os dele
+        // Se for entregador, ele vê os dele OU os pendentes
         if (req.usuario.perfil === 'ENTREGADOR') {
-            where.entregador_id = req.usuario.id;
+            where[Op.or] = [
+                { entregador_id: req.usuario.id },
+                { status: 'PENDENTE' }
+            ];
+        } else if (status) {
+            where.status = status;
         }
 
         const pedidos = await Pedido.findAll({
@@ -25,6 +29,7 @@ exports.listarPedidos = async (req, res) => {
 
         return res.json(pedidos);
     } catch (error) {
+        console.error('Erro ao listar pedidos:', error);
         res.status(500).json({ error: 'Erro ao buscar pedidos.' });
     }
 };
@@ -41,8 +46,8 @@ exports.detalhesPedido = async (req, res) => {
 
         if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
 
-        // Regra de negócios para ENTREGADOR ver o pedido
-        if (req.usuario.perfil === 'ENTREGADOR' && pedido.entregador_id !== req.usuario.id) {
+        // Regra de negócios para ENTREGADOR ver o pedido (Seu próprio ou Pendente)
+        if (req.usuario.perfil === 'ENTREGADOR' && pedido.entregador_id !== req.usuario.id && pedido.status !== 'PENDENTE') {
             return res.status(403).json({ error: 'Acesso negado a este pedido.' });
         }
 
@@ -78,6 +83,7 @@ exports.criarPedido = async (req, res) => {
 
         return res.status(201).json(novoPedido);
     } catch (error) {
+        console.error('Erro ao criar pedido:', error);
         await t.rollback();
         res.status(500).json({ error: 'Erro ao criar pedido.' });
     }
@@ -107,7 +113,6 @@ exports.editarPedido = async (req, res) => {
 
         await pedido.update(req.body, { transaction: t });
 
-        // Atualiza itens (se necessário: remove os antigos e reinsere ou update on duplicate key)
         if (req.body.itens) {
             await ItemPedido.destroy({ where: { pedido_id: pedido.id }, transaction: t });
             const itens = req.body.itens.map(i => ({ ...i, pedido_id: pedido.id }));
@@ -134,6 +139,12 @@ exports.atualizarStatus = async (req, res) => {
 
         const statusDe = pedido.status;
         pedido.status = status;
+
+        // Se o entregador está assumindo um pedido pendente
+        if (status === 'EM_ROTA' && !pedido.entregador_id && req.usuario.perfil === 'ENTREGADOR') {
+            pedido.entregador_id = req.usuario.id;
+        }
+
         await pedido.save();
 
         await HistoricoStatus.create({
@@ -145,6 +156,7 @@ exports.atualizarStatus = async (req, res) => {
         });
 
         socketService.getIO().emit('pedido:status', { pedidoId: pedido.id, status });
+        socketService.getIO().emit('pedido:atualizado', pedido);
 
         return res.json({ message: 'Status atualizado com sucesso.', pedido });
     } catch (error) {
@@ -170,8 +182,7 @@ exports.excluirPedido = async (req, res) => {
 exports.pedidosEntregador = async (req, res) => {
     try {
         const { dataInicio, dataFim } = req.query;
-        const { uid } = req.params;
-        const { Op } = require('sequelize');
+        const uid = parseInt(req.params.uid);
 
         console.log(`[DEBUG_API] Buscando pedidos para UID: ${uid}. Query params:`, req.query);
 
@@ -183,19 +194,30 @@ exports.pedidosEntregador = async (req, res) => {
         };
 
         if (dataInicio && dataFim) {
+            // Ajuste de data para ignorar hora e pegar o dia todo com segurança
+            const dInicio = new Date(dataInicio);
+            dInicio.setHours(0, 0, 0, 0);
+            const dFim = new Date(dataFim);
+            dFim.setHours(23, 59, 59, 999);
+
             where.data_pedido = {
-                [Op.between]: [new Date(dataInicio), new Date(dataFim)]
+                [Op.between]: [dInicio, dFim]
             };
         } else if (dataInicio) {
+            const dInicio = new Date(dataInicio);
+            dInicio.setHours(0, 0, 0, 0);
             where.data_pedido = {
-                [Op.gte]: new Date(dataInicio)
+                [Op.gte]: dInicio
             };
         }
 
         const pedidos = await Pedido.findAll({
             where,
+            include: [{ model: Usuario, as: 'entregador', attributes: ['id', 'nome'] }],
             order: [['data_pedido', 'DESC']]
         });
+
+        console.log(`[DEBUG_API] Encontrados ${pedidos.length} pedidos.`);
         return res.json(pedidos);
     } catch (error) {
         console.error('Erro ao buscar entregas:', error);
