@@ -3,10 +3,11 @@ const pdf = require('pdf-parse');
 
 const PATTERNS = {
     numeroPedido: /PEDIDO\s+Nº\s*([\d.]+)/i,
-    dataPedido: /Data:\s*(\d{2}\/\w+\/\d{4})/i,
-    nomeCliente: /Nome:\s*([\d-]*\s*[^-\n]+)/i,
-    enderecoEntrega: /Endereço de Entrega:\s*([\s\S]+?)(?:\nAprovação|$)/i,
-    totalLiquido: /Total Liquido R\$\s*([\d.,]+)/i,
+    dataPedido: /Data:(\d{2}\/\w+\/\d{4})/i,
+    nomeCliente: /Nome:\s*([\d-]*\s*[^/\n\r]+?)(?:\/|Fone:|$)/i,
+    formaPagamento: /Forma Pg\n(?:.*\n){3}([A-ZÀ-Ú\s]+)\n/i,
+    vencimento: /\(\d\)(\d{2}\/\d{2}\/\d{2})/i,
+    telefone: /CEP:[\d.-]+\s*Fone:\s*([\d\s()-]+?)(?=E-mail|$)/i
 };
 
 function extractField(text, regex, defaultValue = '') {
@@ -17,32 +18,33 @@ function extractField(text, regex, defaultValue = '') {
     return { value: defaultValue, confianca: 'baixa' };
 }
 
-/**
- * Extrai os itens do pedido com base na estrutura tabular
- */
 function extractItems(text) {
     const items = [];
-    // Busca a seção de itens entre o cabeçalho e os totalizadores
-    const sectionMatch = text.match(/ITENS\s+DO\s+PEDIDO[\s\S]+?Totalizadores/i);
-
-    if (sectionMatch) {
-        const section = sectionMatch[0];
-        // Regex para capturar cada linha de item:
-        // ÍNDICE | DESCRIÇÃO | QTD | UN | ...
-        // Ex: 1 RIPA 1X2 CAMBARÁ C/3,0MT 7,00 pç
-        const itemRegex = /^(\d+)\s+([\s\S]+?)\s+(\d+[\d,.]*)\s+(\w+)\s+/gm;
-        let match;
-
-        while ((match = itemRegex.exec(section)) !== null) {
+    const lines = text.split('\n');
+    lines.forEach(line => {
+        // Padrão: Index + Descrição + Qtd + Unidade (pç, M², un, kg, mt, cx, rol, par)
+        const itemLineRegex = /^(\d+)\s+(.+?)\s+(\d+[\d,.]*)(pç|M²|un|kg|mt|cx|rol|par)/i;
+        const m = line.trim().match(itemLineRegex);
+        if (m) {
             items.push({
-                id: parseInt(match[1]),
-                descricao: match[2].replace(/\n/g, ' ').trim(),
-                quantidade: parseFloat(match[3].replace(',', '.')),
-                unidade: match[4]
+                id: parseInt(m[1]),
+                descricao: m[2].trim(),
+                quantidade: parseFloat(m[3].replace(',', '.')),
+                unidade: m[4]
             });
         }
-    }
+    });
     return items;
+}
+
+function extractTotalLiquido(text) {
+    const lines = text.split('\n');
+    const totalIndex = lines.findIndex(l => l.includes('Total Liquido R$'));
+    if (totalIndex !== -1 && lines[totalIndex + 1]) {
+        const numbers = lines[totalIndex + 1].match(/[\d,.]+/g);
+        if (numbers) return { value: numbers[numbers.length - 1], confianca: 'alta' };
+    }
+    return { value: '0,00', confianca: 'baixa' };
 }
 
 async function parsePedidoPdf(filePath) {
@@ -51,31 +53,30 @@ async function parsePedidoPdf(filePath) {
         const data = await pdf(dataBuffer);
         const text = data.text;
 
-        console.log('--- Texto Extraído do PDF ---');
-        console.log(text.substring(0, 1000)); // Log para debug no servidor
-        console.log('-----------------------------');
-
         const parsedData = {
             numeroPedido: extractField(text, PATTERNS.numeroPedido, '000'),
             dataPedido: extractField(text, PATTERNS.dataPedido, ''),
             nomeCliente: extractField(text, PATTERNS.nomeCliente, 'Cliente não identificado'),
-            enderecoEntrega: extractField(text, PATTERNS.enderecoEntrega, 'Endereço não identificado'),
-            totalLiquido: extractField(text, PATTERNS.totalLiquido, '0,00'),
+            telefoneCliente: extractField(text, PATTERNS.telefone, ''),
+            totalLiquido: extractTotalLiquido(text),
+            formaPagamento: extractField(text, PATTERNS.formaPagamento, ''),
+            vencimento: extractField(text, PATTERNS.vencimento, ''),
             itens: extractItems(text),
             rawText: text
         };
 
-        // Fallback para endereço se o principal falhar
-        if (parsedData.enderecoEntrega.value.includes('Endereço não identificado')) {
-            const altEndereco = text.match(/Endereço:\s*(.+?)(?:\nEmail|$)/i);
-            if (altEndereco) parsedData.enderecoEntrega.value = altEndereco[1].trim();
-        }
+        // Fallback para endereço
+        const enderecoMatch = text.match(/Endereço de Entrega:\s*\n([\s\S]+?)(?:\s+-\s+\n|Aprovação|$)/i);
+        parsedData.enderecoEntrega = {
+            value: enderecoMatch ? enderecoMatch[1].trim() : 'Endereço não identificado',
+            confianca: enderecoMatch ? 'alta' : 'baixa'
+        };
 
         return parsedData;
 
     } catch (error) {
         console.error('Erro ao processar PDF:', error.message);
-        throw new Error('Falha no processamento do arquivo PDF: ' + error.message);
+        throw new Error('Falha no processamento: ' + error.message);
     }
 }
 
