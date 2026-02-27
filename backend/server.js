@@ -16,15 +16,6 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log('--- Iniciando conexão com o Banco de Dados ---');
 });
 
-// Endpoint de Debug de Versão (Ajuda a saber se o deploy atualizou)
-app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'online',
-        versao: '1.0.4 - Parser V3 (b75288b)',
-        time: new Date().toISOString()
-    });
-});
-
 // Tentar conectar e sincronizar em segundo plano
 sequelize.authenticate()
     .then(() => {
