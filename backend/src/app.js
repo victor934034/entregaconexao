@@ -41,4 +41,13 @@ app.get('/', (req, res) => {
     res.send('API Conexão BR277 funcionando!');
 });
 
+// Middleware para capturar 404 e fornecer mensagem detalhada para debug
+app.use((req, res) => {
+    console.log(`[404 NOT FOUND] ${req.method} ${req.url}`);
+    res.status(404).json({
+        error: `Rota não encontrada no servidor: ${req.method} ${req.url}`,
+        tip: 'Verifique se a URL base no app termina com /api/ e se as rotas não começam com /'
+    });
+});
+
 module.exports = app;

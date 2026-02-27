@@ -38,7 +38,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         
                     _loginResult.value = Result.success(body)
                 } else {
-                    _loginResult.value = Result.failure(Exception("Falha no login: credenciais inválidas"))
+                    val errorBody = response.errorBody()?.string()
+                    val errorMessage = try {
+                        val json = org.json.JSONObject(errorBody)
+                        json.optString("error", "E-mail ou senha incorretos")
+                    } catch (e: Exception) {
+                        "Falha no servidor (${response.code()})"
+                    }
+                    _loginResult.value = Result.failure(Exception(errorMessage))
                 }
             } catch (e: Exception) {
                 _loginResult.value = Result.failure(Exception("Erro de conexão: ${e.message}"))
