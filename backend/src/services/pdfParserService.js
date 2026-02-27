@@ -37,14 +37,19 @@ function extractItems(text) {
 }
 
 function extractTotalLiquido(text) {
+    // Procura pela label final na linha de cabeçalho dos totalizadores
     const lines = text.split('\n');
-    const totalIndex = lines.findIndex(l => l.includes('Total Liquido R$'));
-    if (totalIndex !== -1 && lines[totalIndex + 1]) {
-        // Pega o último número da linha de valores
-        const numbers = lines[totalIndex + 1].match(/[\d,.]+/g);
-        if (numbers) {
-            const val = numbers[numbers.length - 1];
-            return { value: val, confianca: 'alta' };
+    const labelLineIndex = lines.findIndex(l => l.includes('Total Liquido R$'));
+
+    if (labelLineIndex !== -1 && lines[labelLineIndex + 1]) {
+        const valueLine = lines[labelLineIndex + 1];
+        // O valor do Total Líquido é SEMPRE o último valor numérico da linha de totalizadores
+        const numbers = valueLine.match(/[\d,.]+/g);
+        if (numbers && numbers.length > 0) {
+            let finalValue = numbers[numbers.length - 1];
+            // Se o último valor for '0,00' e houver mais de um, pode ser que o PDF tenha colunas extras
+            // Mas no padrão BR77, o total é o último à direita.
+            return { value: finalValue, confianca: 'alta' };
         }
     }
     return { value: '0,00', confianca: 'baixa' };
