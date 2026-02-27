@@ -170,7 +170,7 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
                                             <tr key={item.id} className="border-b border-gray-50 last:border-0">
                                                 <td className="py-2 text-gray-500">{item.codigo || '-'}</td>
                                                 <td className="py-2 font-medium text-gray-800">{item.descricao}</td>
-                                                <td className="py-2 text-right">{item.quantidade} {item.unidade}</td>
+                                                <td className="py-2 text-right">{Number(item.quantidade).toLocaleString('pt-BR')} {item.unidade}</td>
                                             </tr>
                                         ))}
                                     </tbody>

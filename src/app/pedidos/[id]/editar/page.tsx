@@ -83,7 +83,10 @@ export default function EditarPedido({ params }: { params: { id: string } }) {
                     hora_entrega_programada: p.hora_entrega_programada || '',
                     total_liquido: p.total_liquido ? p.total_liquido.toString().replace('.', ',') : '',
                     forma_pagamento: p.forma_pagamento || '',
-                    itens: p.itens || [],
+                    itens: p.itens ? p.itens.map((i: any) => ({
+                        ...i,
+                        quantidade: Number(i.quantidade) // strip trailing zeros (e.g. 27.600 -> 27.6)
+                    })) : [],
                 });
             } catch (error) {
                 console.error(error);

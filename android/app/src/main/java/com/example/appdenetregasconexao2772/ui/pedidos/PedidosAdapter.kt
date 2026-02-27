@@ -48,7 +48,7 @@ class PedidosAdapter(
         val countStr = if (totalItens % 1.0 == 0.0) {
             "${totalItens.toInt()}"
         } else {
-            String.format("%.2f", totalItens)
+            java.text.DecimalFormat("#.##").format(totalItens)
         }
         holder.tvItensCount.text = "$countStr item(ns)"
 

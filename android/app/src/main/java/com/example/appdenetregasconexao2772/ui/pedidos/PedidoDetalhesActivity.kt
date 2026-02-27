@@ -196,7 +196,7 @@ class PedidoDetalhesActivity : AppCompatActivity() {
             val qtdFormatada = if (item.quantidade % 1.0 == 0.0) {
                 String.format("%d", item.quantidade.toInt())
             } else {
-                String.format("%.3f", item.quantidade)
+                java.text.DecimalFormat("#.###").format(item.quantidade)
             }
             
             itemView.findViewById<TextView>(R.id.tvProdutoQtd).text = qtdFormatada

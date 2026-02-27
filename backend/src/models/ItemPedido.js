@@ -22,7 +22,7 @@ const ItemPedido = sequelize.define('ItemPedido', {
         allowNull: false,
     },
     quantidade: {
-        type: DataTypes.DECIMAL(10, 3),
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
     },
     unidade: DataTypes.STRING(10),
