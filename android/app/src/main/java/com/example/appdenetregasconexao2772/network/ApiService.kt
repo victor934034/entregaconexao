@@ -6,21 +6,21 @@ import retrofit2.http.*
 
 interface ApiService {
 
-    @POST("auth/login")
+    @POST("api/auth/login")
     suspend fun login(@Body request: Map<String, String>): Response<LoginResponse>
 
-    @POST("auth/registrar")
+    @POST("api/auth/registrar")
     suspend fun registrar(@Body request: Map<String, String>): Response<LoginResponse>
 
-    @GET("pedidos")
+    @GET("api/pedidos")
     suspend fun getPedidos(@Query("status") status: String? = null): Response<List<Pedido>>
 
-    @GET("pedidos/entregador/{uid}")
+    @GET("api/pedidos/entregador/{uid}")
     suspend fun getPedidosEntregador(@Path("uid") uid: Int): Response<List<Pedido>>
 
-    @GET("pedidos/{id}")
+    @GET("api/pedidos/{id}")
     suspend fun getPedidoDetalhes(@Path("id") id: Int): Response<Pedido>
 
-    @PATCH("pedidos/{id}/status")
+    @PATCH("api/pedidos/{id}/status")
     suspend fun updateStatus(@Path("id") id: Int, @Body request: UpdateStatusRequest): Response<Pedido>
 }
