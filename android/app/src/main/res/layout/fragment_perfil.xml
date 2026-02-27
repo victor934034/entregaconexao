@@ -175,8 +175,6 @@
 
                         <include layout="@layout/item_menu_profile" android:id="@+id/menuEditProfile"/>
                         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/input_border" android:layout_marginHorizontal="20dp" />
-                        <include layout="@layout/item_menu_profile" android:id="@+id/menuNotifications"/>
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/input_border" android:layout_marginHorizontal="20dp" />
                         <include layout="@layout/item_menu_profile" android:id="@+id/menuHistory"/>
                         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/input_border" android:layout_marginHorizontal="20dp" />
                         <include layout="@layout/item_menu_profile" android:id="@+id/menuSettings"/>

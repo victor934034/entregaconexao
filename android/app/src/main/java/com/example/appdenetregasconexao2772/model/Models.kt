@@ -49,6 +49,7 @@ data class Pedido(
     val data_entrega_programada: String? = null,
     val hora_entrega_programada: String? = null,
     val observacao_endereco: String? = null,
+    val forma_pagamento: String? = null,
     val total_itens: Double? = null,
     val itens: List<ItemPedido>? = null,
     val historicos: List<HistoricoStatus>? = null

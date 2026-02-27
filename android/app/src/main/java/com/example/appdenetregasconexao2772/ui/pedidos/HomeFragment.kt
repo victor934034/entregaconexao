@@ -92,17 +92,22 @@ class HomeFragment : Fragment() {
             
             val matchesStatus = when (selectedTabPosition) {
                 0 -> pedido.status == "PENDENTE"
-                1 -> pedido.status == "EM_ROTA" || pedido.status == "AGUARDANDO"
-                2 -> pedido.status == "ENTREGUE" || pedido.status == "CONCLUIDO"
+                1 -> pedido.status == "AGUARDANDO" || pedido.status == "EM_ROTA"
+                2 -> pedido.status == "ENTREGUE" || pedido.status == "CONCLUIDO" || pedido.status == "CANCELADO"
                 else -> true
             }
 
-            // Quick filters (simplificado - pode expandir conforme os campos existirem no banco)
             val matchesQuickFilter = when (selectedChipId) {
                 R.id.chipHoje -> {
-                    // Simples verificação de data se disponível
-                    true // Por enquanto mostra todos se for hoje
+                    // Se houver lógica de data ou deixar passar todos se não houver
+                    true
                 }
+                R.id.chipDinheiro -> pedido.forma_pagamento?.contains("Dinheiro", ignoreCase = true) == true
+                R.id.chipCartao -> {
+                    val fp = pedido.forma_pagamento ?: ""
+                    fp.contains("Cartão", ignoreCase = true) || fp.contains("Cartao", ignoreCase = true)
+                }
+                R.id.chipUrgente -> pedido.status == "PENDENTE" // Exemplo de filtro urgente
                 else -> true
             }
 

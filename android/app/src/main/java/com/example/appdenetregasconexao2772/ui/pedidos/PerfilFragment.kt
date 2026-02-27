@@ -12,8 +12,8 @@ import com.example.appdenetregasconexao2772.ui.login.LoginActivity
 import com.example.appdenetregasconexao2772.R
 import android.widget.ImageView
 import android.widget.TextView
-import com.example.appdenetregasconexao2772.ui.perfil.PlaceholderActivity
 import com.example.appdenetregasconexao2772.ui.perfil.EditarPerfilActivity
+import com.example.appdenetregasconexao2772.ui.perfil.ConfiguracoesActivity
 
 class PerfilFragment : Fragment() {
 
@@ -85,22 +85,10 @@ class PerfilFragment : Fragment() {
             startActivity(intent)
         }
 
-        // Notificações
-        binding.menuNotifications.ivMenuIcon.setImageResource(R.drawable.ic_bell)
-        binding.menuNotifications.tvMenuTitle.text = "Notificações"
-        binding.menuNotifications.tvMenuSubtitle.text = "Configurar alertas"
-        binding.menuNotifications.root.setOnClickListener {
-            val intent = Intent(requireContext(), PlaceholderActivity::class.java).apply {
-                putExtra("EXTRA_TITLE", "Notificações")
-                putExtra("EXTRA_ICON", R.drawable.ic_bell)
-            }
-            startActivity(intent)
-        }
-
         // Histórico
         binding.menuHistory.ivMenuIcon.setImageResource(R.drawable.ic_reports)
         binding.menuHistory.tvMenuTitle.text = "Histórico Global"
-        binding.menuHistory.tvMenuSubtitle.text = "Todas as suas entregas"
+        binding.menuHistory.tvMenuSubtitle.text = "Todos os seus pedidos concluídos"
         binding.menuHistory.root.setOnClickListener {
             // Navega para a aba de pedidos se o usuário clicar no histórico
             (requireActivity() as? com.example.appdenetregasconexao2772.MainActivity)?.let {
@@ -113,10 +101,7 @@ class PerfilFragment : Fragment() {
         binding.menuSettings.tvMenuTitle.text = "Configurações"
         binding.menuSettings.tvMenuSubtitle.text = "App e Preferências"
         binding.menuSettings.root.setOnClickListener {
-            val intent = Intent(requireContext(), PlaceholderActivity::class.java).apply {
-                putExtra("EXTRA_TITLE", "Configurações")
-                putExtra("EXTRA_ICON", R.drawable.ic_settings)
-            }
+            val intent = Intent(requireContext(), ConfiguracoesActivity::class.java)
             startActivity(intent)
         }
     }
