@@ -3,7 +3,7 @@ const pdf = require('pdf-parse');
 
 const PATTERNS = {
     numeroPedido: /PEDIDO\s+Nº\s*([\d.]+)/i,
-    dataPedido: /Data:(\d{2}\/\w+\/\d{4}|\d{2}\/\d{2}\/\d{4})/i,
+    dataPedido: /Data:\s*(\d{2}\/\w+\/\d{4}|\d{2}\/\d{2}\/\d{4}|\d{2}\/\d{2}\/\d{2})/i,
     dataEntrega: /(?:Previsão Entrega|Data Entrega|Entregar em):\s*(\d{2}\/\d{2}\/\d{4})/i,
     horaEntrega: /(?:Hora Entrega|Horário):\s*(\d{2}:\d{2})/i,
     nomeCliente: /Nome:\s*(?:\d+[-]\s*)?([^/\n\r\d(]+?)(?:\s+-\s+|\s*[/]|Fone:|$)/i,
@@ -67,6 +67,18 @@ function extractTotalLiquido(text) {
 }
 
 function extractTelefoneCliente(text) {
+    // 0. Tentar extrair telefone misturado na mesma linha do Nome
+    const nomeLineMatch = text.match(/Nome:([^\n]+)/i);
+    if (nomeLineMatch) {
+        const foneNoNome = nomeLineMatch[1].match(/(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]*\d{4}/);
+        if (foneNoNome) {
+            const num = foneNoNome[0].replace(/\D/g, '');
+            if (!num.includes('995278067')) {
+                return { value: foneNoNome[0].trim(), confianca: 'alta' };
+            }
+        }
+    }
+
     // 1. Tentar pegar Fone após o Nome
     const nomeMatch = text.match(/Nome:[\s\S]*?Fone:\s*([\d\s()-]+?)(?=\s*(?:E-mail|CPF|CNPJ|Endere|CEP|Inscrição|\n|$))/i);
     if (nomeMatch && nomeMatch[1]) {
