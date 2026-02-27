@@ -53,6 +53,12 @@ async function parsePedidoPdf(filePath) {
         const data = await pdf(dataBuffer);
         const text = data.text;
 
+        // LOG CRÍTICO PARA DEBUG EM PRODUÇÃO
+        console.log('==== DEBUG PARSE PDF (PRODUÇÃO) ====');
+        console.log('TAMANHO DO TEXTO:', text.length);
+        console.log('TEXTO BRUTO (JSON):', JSON.stringify(text.substring(0, 500)));
+        console.log('====================================');
+
         const parsedData = {
             numeroPedido: extractField(text, PATTERNS.numeroPedido, '000'),
             dataPedido: extractField(text, PATTERNS.dataPedido, ''),
