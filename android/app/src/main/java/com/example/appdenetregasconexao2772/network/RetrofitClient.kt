@@ -8,7 +8,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "https://app-backend.zdc13k.easypanel.host/"
+    private const val BASE_URL = "https://app-backend.zdc13k.easypanel.host/api/"
 
     fun create(context: Context): ApiService {
         val logging = HttpLoggingInterceptor().apply {
