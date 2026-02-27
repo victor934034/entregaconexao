@@ -32,7 +32,13 @@ class CalendarioFragment : Fragment() {
 
         viewModel = ViewModelProvider(this)[PedidosViewModel::class.java]
 
-        adapter = PedidosAdapter(emptyList()) {}
+        adapter = PedidosAdapter(
+            pedidos = emptyList(),
+            onAtualizarClick = {},
+            onVerDetalhesClick = { pedido ->
+                PedidoDetalhesActivity.start(requireContext(), pedido.id)
+            }
+        )
         binding.rvPedidosHistorico.layoutManager = LinearLayoutManager(requireContext())
         binding.rvPedidosHistorico.adapter = adapter
 

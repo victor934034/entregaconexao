@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.appdenetregasconexao2772.databinding.FragmentHomeBinding
+import com.example.appdenetregasconexao2772.ui.pedidos.PedidoDetalhesActivity
 
 class HomeFragment : Fragment() {
 
@@ -37,18 +38,23 @@ class HomeFragment : Fragment() {
 
     private fun setupRecyclerView() {
         binding.rvPedidos.layoutManager = LinearLayoutManager(requireContext())
-        adapter = PedidosAdapter(emptyList()) { pedido ->
-            // Clique para atualizar status (mesma lógica anterior)
-            val novoStatus = when(pedido.status) {
-                "PENDENTE" -> "EM_ROTA"
-                "EM_ROTA" -> "ENTREGUE"
-                else -> ""
+        adapter = PedidosAdapter(
+            pedidos = emptyList(),
+            onAtualizarClick = { pedido ->
+                val novoStatus = when(pedido.status) {
+                    "PENDENTE" -> "EM_ROTA"
+                    "EM_ROTA" -> "ENTREGUE"
+                    else -> ""
+                }
+                if(novoStatus.isNotEmpty()) {
+                    binding.progressBar.visibility = View.VISIBLE
+                    viewModel.atualizarStatus(pedido.id, novoStatus)
+                }
+            },
+            onVerDetalhesClick = { pedido ->
+                PedidoDetalhesActivity.start(requireContext(), pedido.id)
             }
-            if(novoStatus.isNotEmpty()) {
-                binding.progressBar.visibility = View.VISIBLE
-                viewModel.atualizarStatus(pedido.id, novoStatus)
-            }
-        }
+        )
         binding.rvPedidos.adapter = adapter
     }
 

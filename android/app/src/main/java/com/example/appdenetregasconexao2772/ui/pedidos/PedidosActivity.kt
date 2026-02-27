@@ -27,20 +27,25 @@ class PedidosActivity : AppCompatActivity() {
 
         rvPedidos.layoutManager = LinearLayoutManager(this)
         
-        adapter = PedidosAdapter(emptyList()) { pedido ->
-            // Exemplo iterativo: se PENDENTE -> vai para EM_ROTA. Se EM_ROTA -> vai para ENTREGUE
-            val novoStatus = when(pedido.status) {
-                "PENDENTE" -> "EM_ROTA"
-                "EM_ROTA" -> "ENTREGUE"
-                else -> ""
+        adapter = PedidosAdapter(
+            pedidos = emptyList(),
+            onAtualizarClick = { pedido ->
+                val novoStatus = when(pedido.status) {
+                    "PENDENTE" -> "EM_ROTA"
+                    "EM_ROTA" -> "ENTREGUE"
+                    else -> ""
+                }
+                if(novoStatus.isNotEmpty()) {
+                    progressBar.visibility = View.VISIBLE
+                    viewModel.atualizarStatus(pedido.id, novoStatus)
+                } else {
+                    Toast.makeText(this, "Pedido já está ${pedido.status}", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onVerDetalhesClick = { pedido ->
+                PedidoDetalhesActivity.start(this, pedido.id)
             }
-            if(novoStatus.isNotEmpty()) {
-                progressBar.visibility = View.VISIBLE
-                viewModel.atualizarStatus(pedido.id, novoStatus)
-            } else {
-                Toast.makeText(this, "Pedido já está ${pedido.status}", Toast.LENGTH_SHORT).show()
-            }
-        }
+        )
         rvPedidos.adapter = adapter
 
         viewModel.pedidos.observe(this) { lista ->
