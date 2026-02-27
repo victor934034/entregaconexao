@@ -194,10 +194,14 @@ exports.pedidosEntregador = async (req, res) => {
         };
 
         if (dataInicio) {
-            const dateOnly = dataInicio.split('T')[0];
-            where[Op.and] = [
-                sequelize.where(sequelize.fn('DATE', sequelize.col('data_pedido')), '=', dateOnly)
-            ];
+            // Se vier apenas a data (YYYY-MM-DD), criamos o intervalo do dia todo
+            const dateStr = dataInicio.split('T')[0];
+            const dInicio = new Date(`${dateStr}T00:00:00`);
+            const dFim = new Date(`${dateStr}T23:59:59`);
+
+            where.data_pedido = {
+                [Op.between]: [dInicio, dFim]
+            };
         }
 
         const pedidos = await Pedido.findAll({
