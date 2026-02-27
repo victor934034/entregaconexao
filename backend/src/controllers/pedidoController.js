@@ -193,22 +193,11 @@ exports.pedidosEntregador = async (req, res) => {
             ]
         };
 
-        if (dataInicio && dataFim) {
-            // Ajuste de data para ignorar hora e pegar o dia todo com segurança
-            const dInicio = new Date(dataInicio);
-            dInicio.setHours(0, 0, 0, 0);
-            const dFim = new Date(dataFim);
-            dFim.setHours(23, 59, 59, 999);
-
-            where.data_pedido = {
-                [Op.between]: [dInicio, dFim]
-            };
-        } else if (dataInicio) {
-            const dInicio = new Date(dataInicio);
-            dInicio.setHours(0, 0, 0, 0);
-            where.data_pedido = {
-                [Op.gte]: dInicio
-            };
+        if (dataInicio) {
+            const dateOnly = dataInicio.split('T')[0];
+            where[Op.and] = [
+                sequelize.where(sequelize.fn('DATE', sequelize.col('data_pedido')), '=', dateOnly)
+            ];
         }
 
         const pedidos = await Pedido.findAll({
