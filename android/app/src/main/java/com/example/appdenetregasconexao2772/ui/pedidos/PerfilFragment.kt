@@ -26,9 +26,14 @@ class PerfilFragment : Fragment() {
         val prefs = requireContext().getSharedPreferences("conexao_prefs", Context.MODE_PRIVATE)
         val nome = prefs.getString("nome", "Entregador") ?: "Entregador"
         val email = prefs.getString("email", "") ?: ""
+        val perfil = prefs.getString("perfil", "Entregador") ?: "Entregador"
 
         binding.tvNomeEntregador.text = nome
-        binding.tvEmailEntregador.text = email.ifEmpty { "Sem e-mail cadastrado" }
+        binding.tvEmailEntregador.text = if (email.isNotEmpty()) email else "Sem e-mail cadastrado"
+        
+        // Se houver um campo para o cargo/perfil no layout, podemos setar também
+        // Por enquanto, o usuário reclamou que o app "não sabe que sou entregador"
+        // mas o LoginViewModel já bloqueia se não for ENTREGADOR.
 
         binding.btnLogout.setOnClickListener {
             prefs.edit().clear().apply()

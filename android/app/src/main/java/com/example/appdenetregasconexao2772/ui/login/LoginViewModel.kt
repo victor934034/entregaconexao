@@ -28,12 +28,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         return@launch
                     }
 
-                    // Save token
+                    // Save token and user details
                     val prefs = getApplication<Application>().getSharedPreferences("conexao_prefs", Context.MODE_PRIVATE)
                     prefs.edit()
                         .putString("token", body.token)
                         .putInt("uid", body.usuario.id)
                         .putString("nome", body.usuario.nome)
+                        .putString("email", body.usuario.email)
+                        .putString("perfil", body.usuario.perfil)
                         .apply()
                         
                     _loginResult.value = Result.success(body)
