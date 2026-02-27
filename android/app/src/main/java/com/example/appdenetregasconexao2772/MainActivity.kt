@@ -22,6 +22,9 @@ class MainActivity : AppCompatActivity() {
             switchFragment(HomeFragment())
         }
 
+        // Conecta ao Socket.io para atualizações em tempo real
+        com.example.appdenetregasconexao2772.network.SocketManager.connect()
+
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_pedidos -> { switchFragment(HomeFragment()); true }

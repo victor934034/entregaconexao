@@ -31,9 +31,19 @@ class HomeFragment : Fragment() {
         
         setupRecyclerView()
         observeViewModel()
+        setupSocketListeners()
         
         binding.progressBar.visibility = View.VISIBLE
         viewModel.carregarPedidosEntregador()
+    }
+
+    private fun setupSocketListeners() {
+        com.example.appdenetregasconexao2772.network.SocketManager.getSocket()?.apply {
+            on("pedido:criado") { activity?.runOnUiThread { viewModel.carregarPedidosEntregador() } }
+            on("pedido:atualizado") { activity?.runOnUiThread { viewModel.carregarPedidosEntregador() } }
+            on("pedido:status") { activity?.runOnUiThread { viewModel.carregarPedidosEntregador() } }
+            on("pedido:excluido") { activity?.runOnUiThread { viewModel.carregarPedidosEntregador() } }
+        }
     }
 
     private fun setupRecyclerView() {

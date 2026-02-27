@@ -173,7 +173,12 @@ exports.pedidosEntregador = async (req, res) => {
         const { uid } = req.params;
         const { Op } = require('sequelize');
 
-        const where = { entregador_id: uid };
+        const where = {
+            [Op.or]: [
+                { entregador_id: uid },
+                { [Op.and]: [{ entregador_id: null }, { status: 'PENDENTE' }] }
+            ]
+        };
 
         if (dataInicio && dataFim) {
             where.data_pedido = {
