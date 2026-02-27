@@ -22,6 +22,7 @@ export default function NovoPedido() {
         numero_end: '',
         total_liquido: '',
         forma_pagamento: '',
+        itens: [] as any[],
     });
 
     const [warnings, setWarnings] = useState<string[]>([]);
@@ -65,6 +66,10 @@ export default function NovoPedido() {
                 telefone_cliente: verifyTrust(data.telefoneCliente, 'Telefone do Cliente'),
                 total_liquido: verifyTrust(data.totalLiquido, 'Total Líquido'),
                 forma_pagamento: verifyTrust(data.formaPagamento, 'Forma de Pagamento'),
+                logradouro: data.endereco?.logradouro || '',
+                numero_end: data.endereco?.numero || '',
+                bairro: data.endereco?.bairro || '',
+                itens: data.itens || [],
             });
 
             setWarnings(newWarnings);
@@ -81,7 +86,6 @@ export default function NovoPedido() {
         e.preventDefault();
         setLoading(true);
         try {
-            // Formatação básica (data etc.) deverá ocorrer aqui 
             await api.post('/pedidos', { ...form });
             alert('Pedido criado com sucesso!');
             router.push('/pedidos');
@@ -211,6 +215,38 @@ export default function NovoPedido() {
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
+                </div>
+
+                <h3 className="font-semibold text-xl border-b pb-2 pt-4">Itens do Pedido</h3>
+                <div className="overflow-x-auto border rounded-xl">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-50 text-gray-700 uppercase text-xs">
+                            <tr>
+                                <th className="px-4 py-3">#</th>
+                                <th className="px-4 py-3">Descrição</th>
+                                <th className="px-4 py-3">Qtd</th>
+                                <th className="px-4 py-3">Un</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {form.itens.length > 0 ? (
+                                form.itens.map((item, i) => (
+                                    <tr key={i} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 font-medium">{item.idx || i + 1}</td>
+                                        <td className="px-4 py-3">{item.descricao}</td>
+                                        <td className="px-4 py-3">{item.quantidade}</td>
+                                        <td className="px-4 py-3">{item.unidade}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">
+                                        Nenhum item importado.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
 
                 <h3 className="font-semibold text-xl border-b pb-2 pt-4">Financeiro</h3>
