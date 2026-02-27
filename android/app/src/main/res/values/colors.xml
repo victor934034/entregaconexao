@@ -1,5 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Professional Brand Palette (Based on Reference) -->
+    <color name="primary">#1A73E8</color>       <!-- Google Blue -->
+    <color name="primary_dark">#185ABC</color>  <!-- Deeper Blue -->
+    <color name="primary_light">#E8F0FE</color> <!-- Very Light Blue -->
+    
+    <color name="accent">#F9AB00</color>        <!-- Google Yellow -->
+    <color name="accent_dark">#EA8600</color>
+    
+    <!-- Backgrounds & Surfaces -->
+    <color name="background_light">#F8F9FA</color> 
+    <color name="surface_light">#FFFFFF</color>     
+    <color name="card_background">#FFFFFF</color>
+    
+    <color name="background_dark">#202124</color>   
+    <color name="surface_dark">#292A2D</color>      
+    
+    <!-- Text Colors -->
+    <color name="text_primary">#202124</color>      <!-- Dark Gray -->
+    <color name="text_secondary">#5F6368</color>    <!-- Medium Gray -->
+    <color name="text_tertiary">#70757A</color>     <!-- Light Gray -->
+    <color name="text_inverse">#FFFFFF</color>      
+ 
+    <!-- Status Badge Colors -->
+    <color name="status_pending_bg">#E8F0FE</color>
+    <color name="status_pending_text">#1A73E8</color>
+    
+    <color name="status_waiting_bg">#FFF4E5</color>
+    <color name="status_waiting_text">#663C00</color>
+    
+    <color name="status_success_bg">#E6F4EA</color>
+    <color name="status_success_text">#137333</color>
+
+    <color name="status_error_bg">#FCE8E6</color>
+    <color name="status_error_text">#C5221F</color>
+
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    
+    <!-- Input Fields -->
+    <color name="input_border">#DADCE0</color>
+    <color name="input_bg">#F1F3F4</color>
+
+    <!-- Semantic Warning Colors (Adaptable) -->
+    <color name="warning_bg_light">#FFF3E0</color>
+    <color name="warning_stroke_light">#FFE0B2</color>
+    <color name="warning_text_light">#E65100</color>
+    
+    <color name="warning_bg_dark">#432C0B</color>
+    <color name="warning_stroke_dark">#664D11</color>
+    <color name="warning_text_dark">#FFCC80</color>
 </resources>

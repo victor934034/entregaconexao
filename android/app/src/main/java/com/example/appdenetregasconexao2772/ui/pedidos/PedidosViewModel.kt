@@ -26,6 +26,15 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
     private val _statusUpdateSuccess = MutableLiveData<Boolean>()
     val statusUpdateSuccess: LiveData<Boolean> = _statusUpdateSuccess
 
+    private val _totalEntregas = MutableLiveData<Int>()
+    val totalEntregas: LiveData<Int> = _totalEntregas
+
+    private val _totalGanhos = MutableLiveData<Double>()
+    val totalGanhos: LiveData<Double> = _totalGanhos
+
+    // Cache para o calendário: Data -> Lista de Pedidos
+    private val calendarCache = mutableMapOf<String, List<Pedido>>()
+
     fun carregarDetalhesPedido(pedidoId: Int) {
         viewModelScope.launch {
             try {
@@ -49,7 +58,13 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val response = apiService.getPedidosEntregador(uid)
                 if (response.isSuccessful) {
-                    _pedidos.value = response.body() ?: emptyList()
+                    val lista = response.body() ?: emptyList()
+                    _pedidos.value = lista
+                    
+                    // Cálculo de estatísticas reais
+                    val entregues = lista.filter { it.status == "ENTREGUE" || it.status == "CONCLUIDO" }
+                    _totalEntregas.value = entregues.size
+                    _totalGanhos.value = entregues.sumOf { it.total_liquido ?: 0.0 }
                 } else {
                     _error.value = "Falha ao carregar pedidos"
                 }
@@ -60,13 +75,21 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun carregarPedidosPorData(uid: Int, data: String) {
+        // Verifica no cache primeiro
+        if (calendarCache.containsKey(data)) {
+            _pedidos.value = calendarCache[data]
+            return
+        }
+
         viewModelScope.launch {
             try {
                 val dataFim = data + "T23:59:59"
                 val dataInicio = data + "T00:00:00"
                 val response = apiService.getPedidosEntregador(uid, dataInicio, dataFim)
                 if (response.isSuccessful) {
-                    _pedidos.value = response.body() ?: emptyList()
+                    val list = response.body() ?: emptyList()
+                    calendarCache[data] = list // Salva no cache
+                    _pedidos.value = list
                 } else {
                     _error.value = "Falha ao carregar pedidos da data"
                 }
@@ -85,11 +108,31 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                 if (response.isSuccessful) {
                     _statusUpdateSuccess.value = true
                     carregarPedidosEntregador() // recarrega a lista
+                    carregarEstatisticas() // recarrega stats
                 } else {
                     _error.value = "Falha ao atualizar status"
                 }
             } catch (e: Exception) {
                 _error.value = "Erro de rede: ${e.message}"
+            }
+        }
+    }
+
+    fun carregarEstatisticas() {
+        val prefs = getApplication<Application>().getSharedPreferences("conexao_prefs", Context.MODE_PRIVATE)
+        val uid = prefs.getInt("uid", -1)
+        if(uid == -1) return
+
+        viewModelScope.launch {
+            try {
+                val response = apiService.getUserStats(uid)
+                if (response.isSuccessful) {
+                    val stats = response.body()
+                    _totalEntregas.value = stats?.total_entregas ?: 0
+                    _totalGanhos.value = stats?.ganhos ?: 0.0
+                }
+            } catch (e: Exception) {
+                // Silently fail for stats, or handle error
             }
         }
     }

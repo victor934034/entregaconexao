@@ -18,6 +18,11 @@ exports.listarPedidos = async (req, res) => {
 
         const pedidos = await Pedido.findAll({
             where,
+            attributes: [
+                'id', 'numero_pedido', 'data_pedido', 'nome_cliente', 'status',
+                'logradouro', 'numero_end', 'bairro', 'cidade', 'total_liquido',
+                'data_entrega_programada', 'hora_entrega_programada', 'observacao_endereco', 'total_itens'
+            ],
             include: [
                 { model: Usuario, as: 'entregador', attributes: ['id', 'nome'] }
             ],
@@ -65,6 +70,10 @@ exports.criarPedido = async (req, res) => {
         if (dadosPedido.itens && dadosPedido.itens.length > 0) {
             const itens = dadosPedido.itens.map(i => ({ ...i, pedido_id: novoPedido.id }));
             await ItemPedido.bulkCreate(itens, { transaction: t });
+
+            // Atualiza o total_itens no pedido
+            const totalItens = dadosPedido.itens.reduce((sum, item) => sum + (parseFloat(item.quantidade) || 0), 0);
+            await novoPedido.update({ total_itens: totalItens }, { transaction: t });
         }
 
         await HistoricoStatus.create({
@@ -114,6 +123,10 @@ exports.editarPedido = async (req, res) => {
             await ItemPedido.destroy({ where: { pedido_id: pedido.id }, transaction: t });
             const itens = req.body.itens.map(i => ({ ...i, pedido_id: pedido.id }));
             await ItemPedido.bulkCreate(itens, { transaction: t });
+
+            // Recalculate total_itens
+            const totalItens = req.body.itens.reduce((acc, item) => acc + (parseFloat(item.quantidade) || 0), 0);
+            await pedido.update({ total_itens: totalItens }, { transaction: t });
         }
 
         await t.commit();
@@ -183,9 +196,7 @@ exports.pedidosEntregador = async (req, res) => {
 
         console.log(`[DEBUG_API] Buscando pedidos para UID: ${uid}. Query params:`, req.query);
 
-        const where = {
-            status: { [Op.ne]: 'ENTREGUE' }
-        };
+        const where = {};
 
         if (dataInicio) {
             // Se vier apenas a data (YYYY-MM-DD), criamos o intervalo do dia todo
@@ -196,10 +207,29 @@ exports.pedidosEntregador = async (req, res) => {
             where.data_pedido = {
                 [Op.between]: [dInicio, dFim]
             };
+
+            // Para o Calendário: Mostrar pendentes daquele dia + Todo o histórico deste entregador no dia
+            where[Op.or] = [
+                { status: 'PENDENTE' },
+                { entregador_id: uid }
+            ];
+        } else {
+            // Para a Home (Lista principal):
+            // Não restringimos por data! Mostrar todos os PENDENTES até que alguém aceite,
+            // e mostrar as entregas em andamento que SÃO deste entregador.
+            where[Op.or] = [
+                { status: 'PENDENTE' },
+                { entregador_id: uid, status: { [Op.ne]: 'ENTREGUE' } }
+            ];
         }
 
         const pedidos = await Pedido.findAll({
             where,
+            attributes: [
+                'id', 'numero_pedido', 'data_pedido', 'nome_cliente', 'status',
+                'logradouro', 'numero_end', 'bairro', 'cidade', 'total_liquido',
+                'data_entrega_programada', 'hora_entrega_programada', 'observacao_endereco', 'total_itens'
+            ],
             include: [{ model: Usuario, as: 'entregador', attributes: ['id', 'nome'] }],
             order: [['data_pedido', 'DESC']]
         });

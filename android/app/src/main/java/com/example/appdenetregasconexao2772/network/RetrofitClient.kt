@@ -12,14 +12,18 @@ object RetrofitClient {
 
     fun create(context: Context): ApiService {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = HttpLoggingInterceptor.Level.HEADERS // Reduzido de BODY para HEADERS para performance
         }
 
+        val cacheSize = 10 * 1024 * 1024L // 10 MB
+        val cache = okhttp3.Cache(context.cacheDir, cacheSize)
+
         val client = OkHttpClient.Builder()
+            .cache(cache) // Adicionado Cache
             .addInterceptor(logging)
             .addInterceptor(AuthInterceptor(context))
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS) // Reduzido de 30 para 15
+            .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
         val retrofit = Retrofit.Builder()

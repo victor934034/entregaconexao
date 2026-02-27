@@ -1,9 +1,12 @@
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
+
+app.use(compression());
 
 // Middleware de Log para depuração profunda no EasyPanel
 app.use((req, res, next) => {

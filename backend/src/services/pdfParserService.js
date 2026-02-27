@@ -3,7 +3,9 @@ const pdf = require('pdf-parse');
 
 const PATTERNS = {
     numeroPedido: /PEDIDO\s+Nº\s*([\d.]+)/i,
-    dataPedido: /Data:(\d{2}\/\w+\/\d{4})/i,
+    dataPedido: /Data:(\d{2}\/\w+\/\d{4}|\d{2}\/\d{2}\/\d{4})/i,
+    dataEntrega: /(?:Previsão Entrega|Data Entrega|Entregar em):\s*(\d{2}\/\d{2}\/\d{4})/i,
+    horaEntrega: /(?:Hora Entrega|Horário):\s*(\d{2}:\d{2})/i,
     nomeCliente: /Nome:\s*(?:\d+[-]\s*)?([^/\n\r\d(]+?)(?:\s+-\s+|\s*[/]|Fone:|$)/i,
     formaPagamento: /Forma Pg\n(?:.*\n){3}([A-ZÀ-Ú\s]+)\n/i,
     vencimento: /\(\d\)(\d{2}\/\d{2}\/\d{2})/i,
@@ -66,30 +68,53 @@ function extractTotalLiquido(text) {
 
 function decomporEndereco(text) {
     const match = text.match(/Endereço de Entrega:\s*\n([\s\S]+?)(?:\s+-\s+\n|Aprovação|$)/i);
-    if (!match) return { logradouro: '', numero: '', bairro: '', original: '' };
+    if (!match) return { logradouro: '', numero: '', bairro: '', observacao: '', original: '' };
 
     const original = match[1].trim();
     // Ex: RUA TOSHIAK SAITO (PRÓX GOES), 400 - CASA 2 - UBERABA
-    const parts = original.split('-');
 
+    let parts = original.split('-');
     let logradouro = '';
     let numero = '';
     let bairro = '';
+    let observacao = '';
 
-    if (parts.length >= 1) {
-        const ruaNum = parts[0].split(',');
+    // Tenta detectar avisos entre parênteses ou termos comuns
+    const avisoRegex = /\(([^)]+)\)|(?:PRÓX|PERTO|AO LADO|EM FRENTE|PORTÃO|CASA DE COR|CASA COR|MURO)\s+[^,-]+/gi;
+    let mainText = original;
+    const avisosEncontrados = original.match(avisoRegex);
+
+    if (avisosEncontrados) {
+        observacao = avisosEncontrados.join('; ');
+        // Remove os avisos do texto principal para não sujar o logradouro
+        avisosEncontrados.forEach(a => {
+            mainText = mainText.replace(a, '');
+        });
+    }
+
+    // Processa o texto limpo
+    const cleanParts = mainText.split('-').map(p => p.trim()).filter(p => p.length > 0);
+
+    if (cleanParts.length >= 1) {
+        const ruaNum = cleanParts[0].split(',');
         logradouro = ruaNum[0].trim();
         if (ruaNum.length > 1) {
             numero = ruaNum[1].trim();
         }
     }
 
-    if (parts.length >= 2) {
-        // Se a parte 2 for um complemento (CASA 2), tenta pegar o bairro na parte 3
-        if (parts[1].toUpperCase().includes('CASA') || parts[1].toUpperCase().includes('APTO') || parts[1].toUpperCase().includes('LOJA')) {
-            bairro = parts[parts.length - 1].trim();
+    if (cleanParts.length >= 2) {
+        // Se a parte 2 for um complemento comum que não pegamos na observação
+        const p2 = cleanParts[1].toUpperCase();
+        if (p2.includes('CASA') || p2.includes('APTO') || p2.includes('LOJA') || p2.includes('BLOCO')) {
+            if (!observacao.includes(cleanParts[1])) {
+                observacao = observacao ? `${observacao}; ${cleanParts[1]}` : cleanParts[1];
+            }
+            if (cleanParts.length >= 3) {
+                bairro = cleanParts[cleanParts.length - 1].trim();
+            }
         } else {
-            bairro = parts[1].trim();
+            bairro = cleanParts[1].trim();
         }
     }
 
@@ -100,7 +125,11 @@ function decomporEndereco(text) {
         numero = spl[1].trim();
     }
 
-    return { logradouro, numero, bairro, original };
+    // Limpeza final de pontuação residual
+    logradouro = logradouro.replace(/[(),]/g, '').trim();
+    numero = numero.replace(/[(),]/g, '').trim();
+
+    return { logradouro, numero, bairro, observacao, original };
 }
 
 async function parsePedidoPdf(filePath) {
@@ -113,6 +142,8 @@ async function parsePedidoPdf(filePath) {
         const parsedData = {
             numeroPedido: extractField(text, PATTERNS.numeroPedido, '000'),
             dataPedido: extractField(text, PATTERNS.dataPedido, ''),
+            dataEntregaProgramada: extractField(text, PATTERNS.dataEntrega, ''),
+            horaEntregaProgramada: extractField(text, PATTERNS.horaEntrega, ''),
             nomeCliente: extractField(text, PATTERNS.nomeCliente, 'Cliente não identificado'),
             telefoneCliente: extractField(text, PATTERNS.telefone, ''),
             totalLiquido: extractTotalLiquido(text),
@@ -122,6 +153,7 @@ async function parsePedidoPdf(filePath) {
                 logradouro: endereco.logradouro,
                 numero: endereco.numero,
                 bairro: endereco.bairro,
+                observacao: endereco.observacao,
                 original: endereco.original
             },
             itens: extractItems(text)

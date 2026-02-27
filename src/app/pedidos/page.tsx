@@ -97,9 +97,9 @@ export default function Pedidos() {
                         <thead className="bg-blue-50 text-blue-900 text-sm font-semibold border-b border-blue-100">
                             <tr>
                                 <th className="py-3 px-4">Nº Pedido</th>
-                                <th className="py-3 px-4">Data</th>
+                                <th className="py-3 px-4">Cadastro</th>
+                                <th className="py-3 px-4">Entrega Programada</th>
                                 <th className="py-3 px-4">Cliente</th>
-                                <th className="py-3 px-4">Endereço Resumo</th>
                                 <th className="py-3 px-4">Status</th>
                                 <th className="py-3 px-4 text-center">Ações</th>
                             </tr>
@@ -108,11 +108,18 @@ export default function Pedidos() {
                             {pedidos.map(pedido => (
                                 <tr key={pedido.id} className="border-b border-gray-100 hover:bg-blue-50/50 transition-colors">
                                     <td className="py-3 px-4 font-medium text-gray-900">#{pedido.numero_pedido}</td>
-                                    <td className="py-3 px-4 text-gray-600">{new Date(pedido.data_pedido).toLocaleDateString()}</td>
-                                    <td className="py-3 px-4 text-gray-800">{pedido.nome_cliente}</td>
-                                    <td className="py-3 px-4 text-gray-600 truncate max-w-[200px]">
-                                        {pedido.logradouro}, {pedido.numero_end} - {pedido.bairro}
+                                    <td className="py-3 px-4 text-gray-600 text-xs">{new Date(pedido.data_pedido).toLocaleDateString()}</td>
+                                    <td className="py-3 px-4">
+                                        {pedido.data_entrega_programada ? (
+                                            <div className="text-blue-700 font-semibold">
+                                                {new Date(pedido.data_entrega_programada + 'T12:00:00').toLocaleDateString()}
+                                                {pedido.hora_entrega_programada && <span className="ml-2 text-xs font-normal">às {pedido.hora_entrega_programada}</span>}
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-400 text-xs italic">Não agendado</span>
+                                        )}
                                     </td>
+                                    <td className="py-3 px-4 text-gray-800">{pedido.nome_cliente}</td>
                                     <td className="py-3 px-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(pedido.status)}`}>
                                             {pedido.status}

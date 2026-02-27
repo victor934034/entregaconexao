@@ -53,25 +53,57 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-6">
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h3 className="font-semibold text-lg border-b pb-3 mb-4 flex items-center gap-2">
-                            <User size={18} className="text-blue-600" /> Dados do Cliente
-                        </h3>
+                        <div className="flex justify-between items-center border-b pb-3 mb-4">
+                            <h3 className="font-semibold text-lg flex items-center gap-2">
+                                <User size={18} className="text-blue-600" /> Dados do Cliente
+                            </h3>
+                            <div className="flex gap-2">
+                                {(pedido.telefone_cliente || pedido.celular_cliente) && (
+                                    <a
+                                        href={`https://api.whatsapp.com/send?phone=+55${(pedido.celular_cliente || pedido.telefone_cliente).replace(/\D/g, '')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center gap-1"
+                                    >
+                                        WhatsApp
+                                    </a>
+                                )}
+                            </div>
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <p className="text-sm text-gray-500">Nome</p>
-                                <p className="font-medium text-gray-900">{pedido.nome_cliente || 'N/A'}</p>
+                                <p className="text-sm text-gray-500">Cadastro / Agendamento</p>
+                                <p className="font-medium text-gray-900">{new Date(pedido.data_pedido).toLocaleDateString()}</p>
+                                {pedido.data_entrega_programada && (
+                                    <p className="text-blue-700 font-bold mt-1">
+                                        Entrega: {new Date(pedido.data_entrega_programada + 'T12:00:00').toLocaleDateString()}
+                                        {pedido.hora_entrega_programada && ` às ${pedido.hora_entrega_programada}`}
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500">Telefone / Celular</p>
-                                <p className="font-medium text-gray-900">{pedido.telefone_cliente || pedido.celular_cliente || 'N/A'}</p>
+                                <a href={`tel:${pedido.telefone_cliente || pedido.celular_cliente}`} className="font-medium text-blue-600 hover:underline">
+                                    {pedido.telefone_cliente || pedido.celular_cliente || 'N/A'}
+                                </a>
                             </div>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h3 className="font-semibold text-lg border-b pb-3 mb-4 flex items-center gap-2">
-                            <MapPin size={18} className="text-blue-600" /> Endereço de Entrega
-                        </h3>
+                        <div className="flex justify-between items-center border-b pb-3 mb-4">
+                            <h3 className="font-semibold text-lg flex items-center gap-2">
+                                <MapPin size={18} className="text-blue-600" /> Endereço de Entrega
+                            </h3>
+                            <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${pedido.logradouro}, ${pedido.numero_end} - ${pedido.bairro}, ${pedido.cidade}`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            >
+                                Abrir no Mapa
+                            </a>
+                        </div>
                         <div>
                             <p className="font-medium text-gray-900 text-lg">
                                 {pedido.logradouro}, {pedido.numero_end}
@@ -79,8 +111,15 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
                             <p className="text-gray-600">
                                 {pedido.bairro}, {pedido.cidade} - {pedido.estado} {pedido.cep ? `(CEP: ${pedido.cep})` : ''}
                             </p>
+
                             {pedido.complemento && (
                                 <p className="text-sm text-gray-500 mt-1">Complem.: {pedido.complemento}</p>
+                            )}
+                            {pedido.observacao_endereco && (
+                                <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                    <p className="text-xs font-bold text-orange-800 uppercase mb-1">Ponto de Referência / Aviso</p>
+                                    <p className="text-orange-900 text-sm">{pedido.observacao_endereco}</p>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -145,7 +184,7 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h3 className="font-semibold text-lg border-b pb-3 mb-4 flex items-center gap-2">
+                        <h3 className="font-semibold text-lg border-b border-gray-200 pb-3 mb-4 flex items-center gap-2">
                             <Clock size={18} className="text-blue-600" /> Histórico
                         </h3>
                         <div className="space-y-4">
@@ -155,7 +194,7 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
                                         <div className="absolute w-3 h-3 bg-blue-500 rounded-full -left-[7px] top-1"></div>
                                         <p className="text-sm font-medium text-gray-900">{hist.status_para}</p>
                                         <p className="text-xs text-gray-500">
-                                            {new Date(hist.alterado_em).toLocaleString()} por {hist.autor?.nome || 'Sistema'}
+                                            {new Date(hist.data_alteracao || hist.alterado_em || Date.now()).toLocaleString()} por {hist.autor?.nome || 'Sistema'}
                                         </p>
                                         {hist.observacao && <p className="text-xs text-gray-600 mt-1 italic">"{hist.observacao}"</p>}
                                     </div>
@@ -166,8 +205,40 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
                         </div>
                     </div>
 
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 className="font-semibold text-lg border-b border-gray-200 pb-3 mb-4 flex items-center gap-2">
+                            Atualizar Status (Admin)
+                        </h3>
+                        <div className="space-y-3">
+                            <select
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                value={pedido.status}
+                                onChange={async (e) => {
+                                    const novoStatus = e.target.value;
+                                    if (confirm(`Deseja alterar o status para ${novoStatus}?`)) {
+                                        try {
+                                            await api.put(`/pedidos/${pedido.id}/status`, { status: novoStatus });
+                                            alert('Status atualizado!');
+                                            window.location.reload();
+                                        } catch (err) {
+                                            console.error(err);
+                                            alert('Erro ao atualizar status');
+                                        }
+                                    }
+                                }}
+                            >
+                                <option value="PENDENTE">Pendente</option>
+                                <option value="EM_ROTA">Em Rota</option>
+                                <option value="ENTREGUE">Entregue</option>
+                                <option value="CANCELADO">Cancelado</option>
+                            </select>
+                            <p className="text-xs text-gray-500 italic">Alterações manuais refletem instantaneamente no app dos entregadores.</p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
     );
 }
+

@@ -36,7 +36,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         .putString("nome", body.usuario.nome)
                         .putString("email", body.usuario.email)
                         .putString("perfil", body.usuario.perfil)
-                        .apply()
+                        .commit()
                         
                     _loginResult.value = Result.success(body)
                 } else {

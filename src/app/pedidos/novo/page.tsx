@@ -5,14 +5,41 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Upload, Save, AlertCircle } from 'lucide-react';
 
+interface ItemPedido {
+    idx?: number;
+    descricao: string;
+    quantidade: number;
+    unidade: string;
+}
+
+interface FormState {
+    numero_pedido: string;
+    data_emissao: string;
+    hora_emissao: string;
+    nome_cliente: string;
+    telefone_cliente: string;
+    estado: string;
+    cidade: string;
+    bairro: string;
+    logradouro: string;
+    numero_end: string;
+    observacao_endereco: string;
+    data_entrega_programada: string;
+    hora_entrega_programada: string;
+    total_liquido: string;
+    forma_pagamento: string;
+    itens: ItemPedido[];
+}
+
 export default function NovoPedido() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [file, setFile] = useState<File | null>(null);
 
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<FormState>({
         numero_pedido: '',
-        data_pedido: '',
+        data_emissao: new Date().toISOString().split('T')[0],
+        hora_emissao: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         nome_cliente: '',
         telefone_cliente: '',
         estado: 'PR',
@@ -20,12 +47,21 @@ export default function NovoPedido() {
         bairro: '',
         logradouro: '',
         numero_end: '',
+        observacao_endereco: '',
+        data_entrega_programada: '',
+        hora_entrega_programada: '',
         total_liquido: '',
         forma_pagamento: '',
-        itens: [] as any[],
+        itens: [],
     });
 
     const [warnings, setWarnings] = useState<string[]>([]);
+
+    const updateItem = (index: number, field: keyof ItemPedido, value: any) => {
+        const newItens = [...form.itens];
+        newItens[index] = { ...newItens[index], [field]: value };
+        setForm({ ...form, itens: newItens });
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -58,10 +94,14 @@ export default function NovoPedido() {
                 return field?.value || '';
             };
 
+            const dataImportada = verifyTrust(data.dataPedido, 'Data do Pedido');
+            let dataSplit = dataImportada.split(' ');
+
             setForm({
                 ...form,
                 numero_pedido: verifyTrust(data.numeroPedido, 'Número do Pedido'),
-                data_pedido: verifyTrust(data.dataPedido, 'Data do Pedido'),
+                data_emissao: dataSplit[0] || form.data_emissao,
+                hora_emissao: dataSplit[1] || form.hora_emissao,
                 nome_cliente: verifyTrust(data.nomeCliente, 'Nome do Cliente'),
                 telefone_cliente: verifyTrust(data.telefoneCliente, 'Telefone do Cliente'),
                 total_liquido: verifyTrust(data.totalLiquido, 'Total Líquido'),
@@ -69,11 +109,13 @@ export default function NovoPedido() {
                 logradouro: data.endereco?.logradouro || '',
                 numero_end: data.endereco?.numero || '',
                 bairro: data.endereco?.bairro || '',
+                observacao_endereco: data.endereco?.observacao || '',
+                data_entrega_programada: data.dataEntregaProgramada?.value || '',
+                hora_entrega_programada: data.horaEntregaProgramada?.value || '',
                 itens: data.itens || [],
             });
 
             setWarnings(newWarnings);
-            // ALERTA REMOVIDO A PEDIDO DO USUÁRIO
         } catch (error) {
             console.error(error);
             alert('Erro ao importar PDF.');
@@ -86,36 +128,24 @@ export default function NovoPedido() {
         e.preventDefault();
         setLoading(true);
         try {
-            // Normalização de Dados antes de enviar para o backend
-            const formNormalizado = { ...form };
+            const formNormalizado: any = { ...form };
 
-            // 1. Normalizar Total Líquido (de "854,59" para 854.59)
             if (typeof formNormalizado.total_liquido === 'string') {
                 formNormalizado.total_liquido = formNormalizado.total_liquido.replace(',', '.').replace(/[^\d.]/g, '');
             }
 
-            // 2. Normalizar Data (de "26/fev/2026" para Date objeto ou ISO)
-            // Se falhar a conversão manual, o Sequelize pode dar erro, então tentamos limpar
-            let dataFinal = formNormalizado.data_pedido;
-            const meses: { [key: string]: string } = {
-                'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06',
-                'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12'
-            };
-
-            Object.keys(meses).forEach(mes => {
-                if (dataFinal.toLowerCase().includes(mes)) {
-                    dataFinal = dataFinal.toLowerCase().replace(mes, meses[mes]);
-                }
-            });
-
-            // Tenta converter "26/02/2026 18:42" -> ISO
-            const dateMatch = dataFinal.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-            if (dateMatch) {
-                formNormalizado.data_pedido = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+            // Normalizar data_emissao para data_pedido (ISO)
+            if (form.data_emissao) {
+                formNormalizado.data_pedido = `${form.data_emissao}T${form.hora_emissao || '00:00'}:00.000Z`;
             } else {
-                // Fallback para data atual se estiver muito bagunçado
                 formNormalizado.data_pedido = new Date().toISOString();
             }
+
+            delete formNormalizado.data_emissao;
+            delete formNormalizado.hora_emissao;
+
+            if (formNormalizado.data_entrega_programada === '') delete (formNormalizado as any).data_entrega_programada;
+            if (formNormalizado.hora_entrega_programada === '') delete (formNormalizado as any).hora_entrega_programada;
 
             await api.post('/pedidos', formNormalizado);
             alert('Pedido criado com sucesso!');
@@ -188,14 +218,27 @@ export default function NovoPedido() {
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
-                    <div>
-                        <label className="block text-gray-700 font-medium mb-1">Data / Hora</label>
-                        <input
-                            required
-                            value={form.data_pedido}
-                            onChange={e => setForm({ ...form, data_pedido: e.target.value })}
-                            className="w-full border rounded-lg p-2.5 bg-yellow-50 focus:ring-2 focus:ring-blue-600 outline-none"
-                        />
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-gray-700 font-medium mb-1">Data Emissão</label>
+                            <input
+                                type="date"
+                                required
+                                value={form.data_emissao}
+                                onChange={e => setForm({ ...form, data_emissao: e.target.value })}
+                                className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-gray-700 font-medium mb-1">Hora Emissão</label>
+                            <input
+                                type="time"
+                                required
+                                value={form.hora_emissao}
+                                onChange={e => setForm({ ...form, hora_emissao: e.target.value })}
+                                className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
+                            />
+                        </div>
                     </div>
                     <div>
                         <label className="block text-gray-700 font-medium mb-1">Cliente</label>
@@ -213,6 +256,26 @@ export default function NovoPedido() {
                             onChange={e => setForm({ ...form, telefone_cliente: e.target.value })}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-gray-700 font-medium mb-1 text-blue-700">Data Programada</label>
+                            <input
+                                type="date"
+                                value={form.data_entrega_programada}
+                                onChange={e => setForm({ ...form, data_entrega_programada: e.target.value })}
+                                className="w-full border border-blue-200 bg-blue-50 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-gray-700 font-medium mb-1 text-blue-700">Hora Programada</label>
+                            <input
+                                type="time"
+                                value={form.hora_entrega_programada}
+                                onChange={e => setForm({ ...form, hora_entrega_programada: e.target.value })}
+                                className="w-full border border-blue-200 bg-blue-50 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -246,6 +309,15 @@ export default function NovoPedido() {
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
+                    <div className="sm:col-span-3">
+                        <label className="block text-gray-700 font-medium mb-1 text-orange-700 font-bold">Avisos / Observação do Endereço (Ponto de Refêrencia)</label>
+                        <textarea
+                            value={form.observacao_endereco}
+                            onChange={e => setForm({ ...form, observacao_endereco: e.target.value })}
+                            placeholder="Tipo: Portão verde, Perto da praça, etc."
+                            className="w-full border border-orange-200 bg-orange-50 rounded-lg p-2.5 focus:ring-2 focus:ring-orange-600 outline-none h-20"
+                        />
+                    </div>
                 </div>
 
                 <h3 className="font-semibold text-xl border-b pb-2 pt-4">Itens do Pedido</h3>
@@ -255,8 +327,8 @@ export default function NovoPedido() {
                             <tr>
                                 <th className="px-4 py-3">#</th>
                                 <th className="px-4 py-3">Descrição</th>
-                                <th className="px-4 py-3">Qtd</th>
-                                <th className="px-4 py-3">Un</th>
+                                <th className="px-4 py-3 w-24">Qtd</th>
+                                <th className="px-4 py-3 w-20">Un</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
@@ -264,9 +336,29 @@ export default function NovoPedido() {
                                 form.itens.map((item, i) => (
                                     <tr key={i} className="hover:bg-gray-50">
                                         <td className="px-4 py-3 font-medium">{item.idx || i + 1}</td>
-                                        <td className="px-4 py-3">{item.descricao}</td>
-                                        <td className="px-4 py-3">{item.quantidade}</td>
-                                        <td className="px-4 py-3">{item.unidade}</td>
+                                        <td className="px-4 py-3">
+                                            <input
+                                                value={item.descricao}
+                                                onChange={e => updateItem(i, 'descricao', e.target.value)}
+                                                className="w-full border border-gray-200 focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none"
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <input
+                                                type="number"
+                                                step="0.001"
+                                                value={item.quantidade}
+                                                onChange={e => updateItem(i, 'quantidade', parseFloat(e.target.value) || 0)}
+                                                className="w-full border border-gray-200 focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none"
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <input
+                                                value={item.unidade}
+                                                onChange={e => updateItem(i, 'unidade', e.target.value)}
+                                                className="w-full border border-gray-200 focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none"
+                                            />
+                                        </td>
                                     </tr>
                                 ))
                             ) : (

@@ -1,6 +1,10 @@
 package com.example.appdenetregasconexao2772
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.ImageView
+import android.widget.TextView
+import com.example.appdenetregasconexao2772.ui.perfil.PlaceholderActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.example.appdenetregasconexao2772.databinding.ActivityMainBinding
@@ -16,6 +20,15 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        val prefs = getSharedPreferences("conexao_prefs", MODE_PRIVATE)
+        val token = prefs.getString("token", null)
+
+        if (token == null) {
+            startActivity(Intent(this, com.example.appdenetregasconexao2772.ui.login.LoginActivity::class.java))
+            finish()
+            return
+        }
 
         // Carrega o fragment inicial
         if (savedInstanceState == null) {

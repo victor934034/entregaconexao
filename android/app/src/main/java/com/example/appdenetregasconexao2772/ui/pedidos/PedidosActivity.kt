@@ -28,7 +28,6 @@ class PedidosActivity : AppCompatActivity() {
         rvPedidos.layoutManager = LinearLayoutManager(this)
         
         adapter = PedidosAdapter(
-            pedidos = emptyList(),
             onAtualizarClick = { pedido ->
                 val novoStatus = when(pedido.status) {
                     "PENDENTE" -> "EM_ROTA"

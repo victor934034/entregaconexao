@@ -7,6 +7,10 @@ const permissionMiddleware = require('../middleware/permission.middleware');
 // Todas as rotas de usuários exigem autenticação
 router.use(authMiddleware);
 
+// Rotas que o próprio usuário pode acessar
+router.get('/stats', usuarioController.statsUsuario);
+router.get('/:uid/stats', usuarioController.statsUsuario);
+
 // Apenas SUPER_ADM e ADM com permissão podem gerenciar usuários
 router.use(permissionMiddleware('gerenciar_usuarios'));
 

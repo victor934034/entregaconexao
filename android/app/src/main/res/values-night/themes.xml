@@ -1,7 +1,36 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.AppDeNetregasConexao2772" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+    <!-- Base application theme for Dark Mode. -->
+    <style name="Base.Theme.AppDeNetregasConexao2772" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Brand Colors -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorTertiary">@color/primary_dark</item>
+        
+        <!-- Backgrounds -->
+        <item name="android:windowBackground">@color/background_dark</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        
+        <!-- Typography Color -->
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorOnSurface">@color/white</item>
+        <item name="colorOnBackground">@color/white</item>
+        <item name="colorOnSurfaceVariant">#A0AAB4</item>
+        <item name="colorOutlineVariant">#494A4C</item>
+        <item name="colorOutline">#494A4C</item>
+        
+        <!-- Font styling -->
+        <item name="android:fontFamily">sans-serif-medium</item>
+        
+        <!-- System bar styling -->
+        <item name="android:statusBarColor">@color/background_dark</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:navigationBarColor">@color/surface_dark</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o">false</item>
+
+        <!-- Custom Warning Colors -->
+        <item name="colorWarningBackground">@color/warning_bg_dark</item>
+        <item name="colorWarningStroke">@color/warning_stroke_dark</item>
+        <item name="colorWarningText">@color/warning_text_dark</item>
     </style>
 </resources>

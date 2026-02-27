@@ -27,4 +27,10 @@ interface ApiService {
 
     @PATCH("pedidos/{id}/status")
     suspend fun updateStatus(@Path("id") id: Int, @Body request: UpdateStatusRequest): Response<Pedido>
+
+    @GET("usuarios/{uid}/stats")
+    suspend fun getUserStats(@Path("uid") uid: Int): Response<StatsResponse>
+
+    @PUT("usuarios/{id}")
+    suspend fun updateProfile(@Path("id") id: Int, @Body request: UpdateProfileRequest): Response<Map<String, Any>>
 }

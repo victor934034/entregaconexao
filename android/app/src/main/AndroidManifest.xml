@@ -27,6 +27,8 @@
         <activity android:name=".ui.pedidos.PedidosActivity" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="false" />
         <activity android:name=".ui.pedidos.PedidoDetalhesActivity" android:exported="false" />
+        <activity android:name=".ui.perfil.PlaceholderActivity" android:exported="false" />
+        <activity android:name=".ui.perfil.EditarPerfilActivity" android:exported="false" />
     </application>
 
 </manifest>

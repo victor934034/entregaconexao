@@ -21,6 +21,9 @@ const Pedido = sequelize.define('Pedido', {
     data_saida: DataTypes.DATEONLY,
     hora_prevista: DataTypes.TIME,
 
+    data_entrega_programada: DataTypes.DATEONLY,
+    hora_entrega_programada: DataTypes.TIME,
+
     nome_cliente: DataTypes.STRING(150),
     telefone_cliente: DataTypes.STRING(20),
     email_cliente: DataTypes.STRING(150),
@@ -34,6 +37,7 @@ const Pedido = sequelize.define('Pedido', {
     estado: DataTypes.CHAR(2),
     cep: DataTypes.STRING(10),
     endereco_completo: DataTypes.TEXT,
+    observacao_endereco: DataTypes.TEXT,
 
     total_itens: {
         type: DataTypes.DECIMAL(10, 2),
@@ -71,6 +75,11 @@ const Pedido = sequelize.define('Pedido', {
     timestamps: true,
     createdAt: 'criado_em',
     updatedAt: 'atualizado_em',
+    indexes: [
+        { fields: ['status'] },
+        { fields: ['entregador_id'] },
+        { fields: ['data_pedido'] }
+    ]
 });
 
 Pedido.belongsTo(Usuario, { foreignKey: 'entregador_id', as: 'entregador' });

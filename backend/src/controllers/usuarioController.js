@@ -133,3 +133,24 @@ exports.historicoEntregas = async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar histórico de entregas.' });
     }
 };
+exports.statsUsuario = async (req, res) => {
+    try {
+        const uid = req.params.uid || req.usuario.id;
+
+        const totalEntregas = await Pedido.count({
+            where: { entregador_id: uid, status: ['ENTREGUE', 'CONCLUIDO'] }
+        });
+
+        const ganhos = await Pedido.sum('total_liquido', {
+            where: { entregador_id: uid, status: ['ENTREGUE', 'CONCLUIDO'] }
+        });
+
+        return res.json({
+            total_entregas: totalEntregas || 0,
+            ganhos: ganhos || 0.0
+        });
+    } catch (error) {
+        console.error('Erro ao buscar estatísticas:', error);
+        res.status(500).json({ error: 'Erro ao buscar estatísticas.' });
+    }
+};

@@ -20,7 +20,7 @@ server.listen(PORT, '0.0.0.0', () => {
 sequelize.authenticate()
     .then(() => {
         console.log('✅ Banco de dados conectado com sucesso.');
-        return sequelize.sync({ alter: false });
+        return sequelize.sync({ alter: true });
     })
     .then(async () => {
         console.log('✅ Tabelas sincronizadas.');

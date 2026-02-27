@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="colorWarningBackground" format="color" />
+    <attr name="colorWarningStroke" format="color" />
+    <attr name="colorWarningText" format="color" />
+</resources>
