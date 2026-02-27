@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.appdenetregasconexao2772.databinding.FragmentCalendarioBinding
 import com.example.appdenetregasconexao2772.model.Pedido
 import com.example.appdenetregasconexao2772.ui.pedidos.PedidoDetalhesActivity
+import com.google.android.material.datepicker.MaterialDatePicker
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -91,6 +92,26 @@ class CalendarioFragment : Fragment() {
         binding.btnNextMonth.setOnClickListener {
             currentCalendar.add(Calendar.MONTH, 1)
             updateDaysList()
+        }
+
+        binding.btnSearchDate.setOnClickListener {
+            val datePicker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText("Selecionar Data")
+                .setSelection(selectedDate.time)
+                .build()
+
+            datePicker.addOnPositiveButtonClickListener { selection ->
+                val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+                calendar.timeInMillis = selection
+                
+                selectedDate = calendar.time
+                currentCalendar.time = calendar.time
+                
+                updateDaysList()
+                updateSelectedDateLabel(selectedDate)
+                carregarPorData(sdf.format(selectedDate))
+            }
+            datePicker.show(childFragmentManager, "DATE_PICKER")
         }
     }
 

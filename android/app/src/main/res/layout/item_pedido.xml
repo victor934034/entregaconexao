@@ -114,6 +114,36 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Specific: Delivery/Scheduling Info if available -->
+        <LinearLayout
+            android:id="@+id/layoutAgendamento"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:padding="10dp"
+            android:background="@drawable/bg_warning_light"
+            android:backgroundTint="?attr/colorPrimaryContainer"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_agenda"
+                app:tint="?attr/colorPrimary"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:id="@+id/tvAgendamento"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Entrega agendada para: 00/00/0000"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <!-- Action Buttons -->
         <LinearLayout
             android:layout_width="match_parent"

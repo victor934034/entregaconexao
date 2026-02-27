@@ -33,4 +33,14 @@
         <item name="colorWarningStroke">@color/warning_stroke_dark</item>
         <item name="colorWarningText">@color/warning_text_dark</item>
     </style>
+
+    <style name="Theme.AppDeNetregasConexao2772" parent="Base.Theme.AppDeNetregasConexao2772" />
+
+    <!-- Material Card styling - Dark Mode -->
+    <style name="Widget.App.CardView" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">4dp</item>
+        <item name="cardBackgroundColor">@color/card_background</item>
+        <item name="strokeWidth">0dp</item>
+    </style>
 </resources>

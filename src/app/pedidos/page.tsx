@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
 import Link from 'next/link';
-import { Plus, Search, FileText } from 'lucide-react';
+import { Plus, Search, FileText, Edit2, Trash2 } from 'lucide-react';
 
 export default function Pedidos() {
     const { usuario } = useAuth();
@@ -126,12 +126,40 @@ export default function Pedidos() {
                                         </span>
                                     </td>
                                     <td className="py-3 px-4 text-center">
-                                        <Link
-                                            href={`/pedidos/${pedido.id}`}
-                                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                                        >
-                                            Detalhes
-                                        </Link>
+                                        <div className="flex items-center justify-center gap-3">
+                                            <Link
+                                                href={`/pedidos/${pedido.id}`}
+                                                className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
+                                                title="Ver Detalhes"
+                                            >
+                                                Detalhes
+                                            </Link>
+                                            <Link
+                                                href={`/pedidos/${pedido.id}/editar`}
+                                                className="text-amber-600 hover:text-amber-800 font-medium text-sm flex items-center gap-1"
+                                                title="Editar Pedido"
+                                            >
+                                                <Edit2 size={16} />
+                                            </Link>
+                                            <button
+                                                onClick={async () => {
+                                                    if (confirm(`Deseja realmente excluir o pedido #${pedido.numero_pedido}?`)) {
+                                                        try {
+                                                            await api.delete(`/pedidos/${pedido.id}`);
+                                                            alert('Pedido excluído com sucesso!');
+                                                            carregarPedidos();
+                                                        } catch (error) {
+                                                            console.error(error);
+                                                            alert('Erro ao excluir pedido.');
+                                                        }
+                                                    }
+                                                }}
+                                                className="text-red-600 hover:text-red-800 font-medium text-sm flex items-center gap-1"
+                                                title="Excluir Pedido"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

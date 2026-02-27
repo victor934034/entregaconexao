@@ -147,7 +147,11 @@ class PedidoDetalhesActivity : AppCompatActivity() {
         binding.tvSubtotal.text = String.format("R$ %.2f", total)
         
         // Formatar total_itens
-        val totalItens = pedido.total_itens ?: 0.0
+        var totalItens = pedido.total_itens ?: 0.0
+        if (totalItens == 0.0 && !pedido.itens.isNullOrEmpty()) {
+            totalItens = pedido.itens.sumOf { it.quantidade }
+        }
+
         val countStr = if (totalItens % 1.0 == 0.0) {
             "${totalItens.toInt()}"
         } else {

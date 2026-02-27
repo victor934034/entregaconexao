@@ -9,9 +9,9 @@ exports.listarPedidos = async (req, res) => {
 
         const where = {};
 
-        // Se for entregador, ele vê todos os pedidos que NÃO foram entregues ainda
+        // Se for entregador, ele vê todos os pedidos
         if (req.usuario.perfil === 'ENTREGADOR') {
-            where.status = { [Op.ne]: 'ENTREGUE' };
+            // Removemos o filtro que excluía ENTREGUE para que ele veja seu histórico
         } else if (status) {
             where.status = status;
         }
@@ -214,12 +214,9 @@ exports.pedidosEntregador = async (req, res) => {
                 { entregador_id: uid }
             ];
         } else {
-            // Para a Home (Lista principal):
-            // Não restringimos por data! Mostrar todos os PENDENTES até que alguém aceite,
-            // e mostrar as entregas em andamento que SÃO deste entregador.
             where[Op.or] = [
                 { status: 'PENDENTE' },
-                { entregador_id: uid, status: { [Op.ne]: 'ENTREGUE' } }
+                { entregador_id: uid }
             ];
         }
 

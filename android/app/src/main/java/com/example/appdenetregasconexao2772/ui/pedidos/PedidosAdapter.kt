@@ -24,6 +24,8 @@ class PedidosAdapter(
         val tvItensCount: TextView = view.findViewById(R.id.tvItensCount)
         val btnVerDetalhes: Button = view.findViewById(R.id.btnVerDetalhes)
         val btnAcao: Button = view.findViewById(R.id.btnAcao)
+        val layoutAgendamento: View = view.findViewById(R.id.layoutAgendamento)
+        val tvAgendamento: TextView = view.findViewById(R.id.tvAgendamento)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PedidoViewHolder {
@@ -38,7 +40,11 @@ class PedidosAdapter(
         holder.tvNumeroPedido.text = "ID #${pedido.numero_pedido ?: pedido.id}"
         holder.tvCliente.text = pedido.nome_cliente ?: "Cliente não identificado"
         holder.tvValorTotal.text = String.format("R$ %.2f", pedido.total_liquido ?: 0.0)
-        val totalItens = pedido.total_itens ?: 0.0
+        var totalItens = pedido.total_itens ?: 0.0
+        if (totalItens == 0.0 && !pedido.itens.isNullOrEmpty()) {
+            totalItens = pedido.itens.sumOf { it.quantidade }
+        }
+        
         val countStr = if (totalItens % 1.0 == 0.0) {
             "${totalItens.toInt()}"
         } else {
@@ -46,12 +52,24 @@ class PedidosAdapter(
         }
         holder.tvItensCount.text = "$countStr item(ns)"
 
-        // Se houver hora programada, destaca na UI (opcional, vamos usar no calendário principalmente)
-        if (!pedido.hora_entrega_programada.isNullOrEmpty()) {
-             holder.tvStatus.text = "${pedido.status} • Agendado ${pedido.hora_entrega_programada}"
+        // Exibição de Agendamento
+        if (!pedido.data_entrega_programada.isNullOrEmpty()) {
+            holder.layoutAgendamento.visibility = View.VISIBLE
+            val dataPura = pedido.data_entrega_programada.split("T")[0] // Pega apenas YYYY-MM-DD se houver T
+            val partes = dataPura.split("-")
+            val dataFormatada = if (partes.size == 3) "${partes[2]}/${partes[1]}/${partes[0]}" else dataPura
+            
+            val info = if (!pedido.hora_entrega_programada.isNullOrEmpty()) {
+                "Entrega: $dataFormatada às ${pedido.hora_entrega_programada}"
+            } else {
+                "Entrega: $dataFormatada"
+            }
+            holder.tvAgendamento.text = info
         } else {
-             holder.tvStatus.text = pedido.status
+            holder.layoutAgendamento.visibility = View.GONE
         }
+
+        holder.tvStatus.text = pedido.status
 
         // Configuração do Status
         configurarStatus(holder.tvStatus, pedido.status ?: "PENDENTE")
@@ -87,7 +105,9 @@ class PedidosAdapter(
         val (bgRes, textColor) = when(status) {
             "PENDENTE" -> R.color.status_pending_bg to R.color.status_pending_text
             "AGUARDANDO" -> R.color.status_waiting_bg to R.color.status_waiting_text
+            "EM_ROTA" -> R.color.status_waiting_bg to R.color.status_waiting_text
             "ENTREGUE", "CONCLUIDO" -> R.color.status_success_bg to R.color.status_success_text
+            "CANCELADO" -> R.color.status_error_bg to R.color.status_error_text
             else -> R.color.status_pending_bg to R.color.status_pending_text
         }
         

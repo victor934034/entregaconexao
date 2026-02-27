@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark Mode Surfaces -->
+    <color name="background_light">#121212</color>
+    <color name="surface_light">#1E1E1E</color>
+    <color name="card_background">#2C2C2C</color>
+    
+    <!-- Text Colors -->
+    <color name="text_primary">#E1E1E1</color>
+    <color name="background_dark">#121212</color>
+    <color name="surface_dark">#1E1E1E</color>
+    
+    <!-- Warning Backgrounds -->
+    <color name="warning_bg_dark">#2E2A14</color>
+    <color name="warning_stroke_dark">#4D441D</color>
+    <color name="warning_text_dark">#FFE082</color>
+
+    <!-- Status Overrides -->
+    <color name="status_pending_bg">#1A3A5F</color>
+    <color name="status_pending_text">#BBDEFB</color>
+    <color name="status_waiting_bg">#3E2723</color>
+    <color name="status_waiting_text">#FFCCBC</color>
+    <color name="status_success_bg">#1B5E20</color>
+    <color name="status_success_text">#C8E6C9</color>
+    <color name="status_error_bg">#B71C1C</color>
+    <color name="status_error_text">#FFCDD2</color>
+</resources>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, User, MapPin, Search, FileText, CheckCircle, Clock, Archive } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Phone, User, Package, Calendar, Banknote, Edit2, Trash2, Printer } from 'lucide-react';
 
 export default function DetalhesPedido({ params }: { params: { id: string } }) {
     const router = useRouter();
@@ -47,6 +47,32 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
                         </span>
                     </h2>
                     <p className="text-gray-500">Cadastrado em {new Date(pedido.data_pedido).toLocaleString()}</p>
+                </div>
+                <div className="flex-1"></div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => router.push(`/pedidos/${pedido.id}/editar`)}
+                        className="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-amber-700 transition-colors shadow-sm"
+                    >
+                        <Edit2 size={18} /> Editar
+                    </button>
+                    <button
+                        onClick={async () => {
+                            if (confirm(`Deseja realmente excluir o pedido #${pedido.numero_pedido}?`)) {
+                                try {
+                                    await api.delete(`/pedidos/${pedido.id}`);
+                                    alert('Pedido excluído!');
+                                    router.push('/pedidos');
+                                } catch (error) {
+                                    console.error(error);
+                                    alert('Erro ao excluir pedido');
+                                }
+                            }
+                        }}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-red-700 transition-colors shadow-sm"
+                    >
+                        <Trash2 size={18} /> Excluir
+                    </button>
                 </div>
             </div>
 
