@@ -54,6 +54,14 @@ app.get('/api/test', (req, res) => {
 });
 
 // Routes
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'online',
+        version: 'Parser V3 Final',
+        timestamp: new Date().toISOString()
+    });
+});
+
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/pedidos', require('./routes/pedido.routes'));
 app.use('/api/usuarios', require('./routes/usuario.routes'));
