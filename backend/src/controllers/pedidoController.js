@@ -115,36 +115,86 @@ exports.importarPdf = async (req, res) => {
 exports.editarPedido = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const pedido = await Pedido.findByPk(req.params.id);
-        if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+        console.log('--- Iniciando Edição de Pedido ---');
+        console.log('ID:', req.params.id);
+        console.log('Body Keys:', Object.keys(req.body));
 
-        await pedido.update(req.body, { transaction: t });
+        const pedido = await Pedido.findByPk(req.params.id);
+        if (!pedido) {
+            console.log('Pedido não encontrado para o ID:', req.params.id);
+            await t.rollback();
+            return res.status(404).json({ error: 'Pedido não encontrado.' });
+        }
+
+        const statusDe = pedido.status;
+
+        // Normalizar campos para evitar erros de tipo no banco
+        const dadosUpdate = { ...req.body };
+        if (dadosUpdate.entregador_id === "") dadosUpdate.entregador_id = null;
+        if (dadosUpdate.vencimento === "") dadosUpdate.vencimento = null;
+        if (dadosUpdate.total_liquido) {
+            dadosUpdate.total_liquido = parseFloat(dadosUpdate.total_liquido.toString().replace(',', '.')) || 0;
+        }
+
+        console.log('Atualizando dados básicos do pedido...');
+        await pedido.update(dadosUpdate, { transaction: t });
 
         if (req.body.itens) {
+            console.log(`Limpando e recriando ${req.body.itens.length} itens...`);
             await ItemPedido.destroy({ where: { pedido_id: pedido.id }, transaction: t });
 
             // Strip IDs to avoid primary key conflicts after destroy
             const itens = req.body.itens.map(i => {
-                const { id, ...itemData } = i;
-                return { ...itemData, pedido_id: pedido.id };
+                const { id, idx, ...itemData } = i;
+
+                // Converter quantidade para número válido (pode vir com vírgula do front)
+                let qtd = itemData.quantidade;
+                if (typeof qtd === 'string') {
+                    qtd = parseFloat(qtd.replace(',', '.'));
+                }
+
+                return {
+                    ...itemData,
+                    quantidade: isNaN(qtd) ? 0 : qtd,
+                    pedido_id: pedido.id
+                };
             });
 
             await ItemPedido.bulkCreate(itens, { transaction: t });
 
             // Recalculate total_itens
-            const totalItens = req.body.itens.reduce((acc, item) => acc + (parseFloat(item.quantidade) || 0), 0);
+            const totalItens = itens.reduce((acc, item) => acc + (parseFloat(item.quantidade) || 0), 0);
             await pedido.update({ total_itens: totalItens }, { transaction: t });
         }
 
-        await t.commit();
+        // Registrar no histórico
+        console.log('Registrando histórico...');
+        await HistoricoStatus.create({
+            pedido_id: pedido.id,
+            status_de: statusDe,
+            status_para: req.body.status || statusDe,
+            alterado_por: req.usuario?.id || null, // Garantir que não quebra se req.usuario disparar undefined
+            observacao: req.body.observacao_historico || 'Pedido editado via Painel Admin'
+        }, { transaction: t });
 
-        socketService.getIO().emit('pedido:atualizado', pedido);
+        await t.commit();
+        console.log('✅ Commit realizado com sucesso.');
+
+        try {
+            socketService.getIO().emit('pedido:atualizado', pedido);
+        } catch (sockErr) {
+            console.error('⚠️ Erro ao emitir via Socket:', sockErr.message);
+        }
 
         return res.json({ message: 'Pedido atualizado.', pedido });
     } catch (error) {
-        console.error('Erro ao editar pedido:', error);
-        await t.rollback();
-        res.status(500).json({ error: 'Erro ao editar pedido.', details: error.message });
+        console.error('❌ ERRO AO EDITAR PEDIDO:', error);
+        if (t && !t.finished) await t.rollback();
+        res.status(500).json({
+            error: 'Erro ao editar pedido.',
+            details: error.message,
+            stack: error.stack
+        });
     }
 };
 
