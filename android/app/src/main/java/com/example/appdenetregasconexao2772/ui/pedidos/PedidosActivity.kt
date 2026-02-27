@@ -23,6 +23,7 @@ class PedidosActivity : AppCompatActivity() {
 
         val rvPedidos = findViewById<RecyclerView>(R.id.rvPedidos)
         val progressBar = findViewById<ProgressBar>(R.id.progressBar)
+        val tvEmptyState = findViewById<android.widget.TextView>(R.id.tvEmptyState)
 
         rvPedidos.layoutManager = LinearLayoutManager(this)
         
@@ -44,7 +45,16 @@ class PedidosActivity : AppCompatActivity() {
 
         viewModel.pedidos.observe(this) { lista ->
             progressBar.visibility = View.GONE
-            adapter.submitList(lista)
+            if (lista.isEmpty()) {
+                tvEmptyState.visibility = View.VISIBLE
+                rvPedidos.visibility = View.GONE
+                // Se o usuário acabou de logar e não tem pedidos, damos as boas-vindas
+                Toast.makeText(this, "Bem-vindo! No momento não há pedidos vinculados a você.", Toast.LENGTH_LONG).show()
+            } else {
+                tvEmptyState.visibility = View.GONE
+                rvPedidos.visibility = View.VISIBLE
+                adapter.submitList(lista)
+            }
         }
 
         viewModel.statusUpdateSuccess.observe(this) { success ->
