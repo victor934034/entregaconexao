@@ -66,6 +66,47 @@ function extractTotalLiquido(text) {
     return { value: '0,00', confianca: 'baixa' };
 }
 
+function extractTelefoneCliente(text) {
+    // 1. Tentar pegar Fone após o Nome
+    const nomeMatch = text.match(/Nome:[\s\S]*?Fone:\s*([\d\s()-]+?)(?=\s*(?:E-mail|CPF|CNPJ|Endere|CEP|Inscrição|\n|$))/i);
+    if (nomeMatch && nomeMatch[1]) {
+        let t = nomeMatch[1].trim();
+        let nums = t.replace(/\D/g, '');
+        // Se caso não for o número da loja (ex: 41 99527-8067)
+        if (!nums.includes('995278067')) {
+            return { value: t, confianca: 'alta' };
+        }
+    }
+
+    // 2. Tentar todos os Fone: e pegar o último que NÃO seja o da loja
+    const matches = [...text.matchAll(/Fone:\s*([\d\s()-]+?)(?=\s*(?:E-mail|CPF|CNPJ|Endere|CEP|Inscrição|\n|$))/gi)];
+    let lastValid = '';
+    for (const m of matches) {
+        let t = m[1].trim();
+        let nums = t.replace(/\D/g, '');
+        if (!nums.includes('995278067')) {
+            lastValid = t;
+        }
+    }
+
+    if (lastValid) {
+        return { value: lastValid, confianca: 'média' };
+    }
+
+    // 3. Fallback original
+    const oldMatch = text.match(/CEP:[\d.-]+\s*Fone:\s*([\d\s()-]+?)(?=E-mail|$)/i);
+    if (oldMatch && oldMatch[1]) {
+        let t = oldMatch[1].trim();
+        let nums = t.replace(/\D/g, '');
+        if (!nums.includes('995278067')) {
+            return { value: t, confianca: 'baixa' };
+        }
+    }
+
+    return { value: '', confianca: 'baixa' };
+}
+
+
 function decomporEndereco(text) {
     const match = text.match(/Endereço de Entrega:\s*\n([\s\S]+?)(?:\s+-\s+\n|Aprovação|$)/i);
     if (!match) return { logradouro: '', numero: '', bairro: '', observacao: '', original: '' };
@@ -145,7 +186,7 @@ async function parsePedidoPdf(filePath) {
             dataEntregaProgramada: extractField(text, PATTERNS.dataEntrega, ''),
             horaEntregaProgramada: extractField(text, PATTERNS.horaEntrega, ''),
             nomeCliente: extractField(text, PATTERNS.nomeCliente, 'Cliente não identificado'),
-            telefoneCliente: extractField(text, PATTERNS.telefone, ''),
+            telefoneCliente: extractTelefoneCliente(text),
             totalLiquido: extractTotalLiquido(text),
             formaPagamento: extractField(text, PATTERNS.formaPagamento, ''),
             vencimento: extractField(text, PATTERNS.vencimento, ''),
