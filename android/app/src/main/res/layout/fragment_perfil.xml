@@ -35,6 +35,19 @@
         android:textColor="#6B7280"
         android:textSize="16sp" />
 
+    <TextView
+        android:id="@+id/tvPerfilUsuario"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="4dp"
+        android:background="@drawable/bg_badge_perfil"
+        android:text="CARGO"
+        android:textColor="#1D4ED8"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"

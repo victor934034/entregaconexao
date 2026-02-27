@@ -9,12 +9,9 @@ exports.listarPedidos = async (req, res) => {
 
         const where = {};
 
-        // Se for entregador, ele vê os dele OU os pendentes
+        // Se for entregador, ele vê todos os pedidos que NÃO foram entregues ainda
         if (req.usuario.perfil === 'ENTREGADOR') {
-            where[Op.or] = [
-                { entregador_id: req.usuario.id },
-                { status: 'PENDENTE' }
-            ];
+            where.status = { [Op.ne]: 'ENTREGUE' };
         } else if (status) {
             where.status = status;
         }
@@ -187,10 +184,7 @@ exports.pedidosEntregador = async (req, res) => {
         console.log(`[DEBUG_API] Buscando pedidos para UID: ${uid}. Query params:`, req.query);
 
         const where = {
-            [Op.or]: [
-                { entregador_id: uid },
-                { status: 'PENDENTE' }
-            ]
+            status: { [Op.ne]: 'ENTREGUE' }
         };
 
         if (dataInicio) {

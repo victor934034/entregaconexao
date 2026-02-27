@@ -30,10 +30,7 @@ class PerfilFragment : Fragment() {
 
         binding.tvNomeEntregador.text = nome
         binding.tvEmailEntregador.text = if (email.isNotEmpty()) email else "Sem e-mail cadastrado"
-        
-        // Se houver um campo para o cargo/perfil no layout, podemos setar também
-        // Por enquanto, o usuário reclamou que o app "não sabe que sou entregador"
-        // mas o LoginViewModel já bloqueia se não for ENTREGADOR.
+        binding.tvPerfilUsuario.text = perfil.uppercase()
 
         binding.btnLogout.setOnClickListener {
             prefs.edit().clear().apply()
