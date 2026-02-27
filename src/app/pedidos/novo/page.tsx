@@ -73,7 +73,7 @@ export default function NovoPedido() {
             });
 
             setWarnings(newWarnings);
-            alert('PDF processado com sucesso. Verifique os campos preenchidos.');
+            // ALERTA REMOVIDO A PEDIDO DO USUÁRIO
         } catch (error) {
             console.error(error);
             alert('Erro ao importar PDF.');
@@ -86,7 +86,38 @@ export default function NovoPedido() {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post('/pedidos', { ...form });
+            // Normalização de Dados antes de enviar para o backend
+            const formNormalizado = { ...form };
+
+            // 1. Normalizar Total Líquido (de "854,59" para 854.59)
+            if (typeof formNormalizado.total_liquido === 'string') {
+                formNormalizado.total_liquido = formNormalizado.total_liquido.replace(',', '.').replace(/[^\d.]/g, '');
+            }
+
+            // 2. Normalizar Data (de "26/fev/2026" para Date objeto ou ISO)
+            // Se falhar a conversão manual, o Sequelize pode dar erro, então tentamos limpar
+            let dataFinal = formNormalizado.data_pedido;
+            const meses: { [key: string]: string } = {
+                'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06',
+                'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12'
+            };
+
+            Object.keys(meses).forEach(mes => {
+                if (dataFinal.toLowerCase().includes(mes)) {
+                    dataFinal = dataFinal.toLowerCase().replace(mes, meses[mes]);
+                }
+            });
+
+            // Tenta converter "26/02/2026 18:42" -> ISO
+            const dateMatch = dataFinal.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            if (dateMatch) {
+                formNormalizado.data_pedido = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+            } else {
+                // Fallback para data atual se estiver muito bagunçado
+                formNormalizado.data_pedido = new Date().toISOString();
+            }
+
+            await api.post('/pedidos', formNormalizado);
             alert('Pedido criado com sucesso!');
             router.push('/pedidos');
         } catch (error) {
