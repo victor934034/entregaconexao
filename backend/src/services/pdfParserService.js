@@ -42,23 +42,23 @@ function extractItems(text) {
 }
 
 function extractTotalLiquido(text) {
-    // Estratégia 1: Procurar na área de Recebimento (Valor R$ 854,59) - MAIS ROBUSTO
-    const recMatch = text.match(/Valor R\$\s*([\d,.]+)/i);
-    if (recMatch) return { value: recMatch[1].trim(), confianca: 'alta' };
-
-    // Estratégia 2: Procurar após o vencimento (0) data valor
-    const vencMatch = text.match(/\d{2}\/\d{2}\/\d{2}\s+([\d,.]+)/);
-    if (vencMatch) return { value: vencMatch[1].trim(), confianca: 'alta' };
-
-    // Estratégia 3: Totalizadores (Fallback para o padrão anterior mas com limpeza de "esmagamento")
-    const lines = text.split('\n');
-    const labelIdx = lines.findIndex(l => l.includes('Total Liquido R$'));
-    if (labelIdx !== -1 && lines[labelIdx + 1]) {
-        const valueLine = lines[labelIdx + 1];
-        const numbers = valueLine.match(/\d+,\d{2}/g); // Procura especificamente padrões de reais (XX,XX)
-        if (numbers && numbers.length > 0) {
-            return { value: numbers[numbers.length - 1], confianca: 'alta' };
+    // 1. Busca específica após a label Total Liquido R$
+    const totalLiquidoPos = text.indexOf('Total Liquido R$');
+    if (totalLiquidoPos !== -1) {
+        const afterTotal = text.substring(totalLiquidoPos);
+        // Captura padrões de moeda brasileira (vários dígitos + vírgula + 2 dígitos)
+        const matches = afterTotal.match(/\d+,\d{2}/g);
+        if (matches && matches.length > 0) {
+            // O Total Líquido aparece repetido nos totalizadores e no recebimento. 
+            // O último valor monetário após a label é o Total Líquido final.
+            return { value: matches[matches.length - 1], confianca: 'alta' };
         }
+    }
+
+    // 2. Fallback agressivo: Pega o último valor monetário do documento
+    const allMatches = text.match(/\d+,\d{2}/g);
+    if (allMatches && allMatches.length > 0) {
+        return { value: allMatches[allMatches.length - 1], confianca: 'alta' };
     }
 
     return { value: '0,00', confianca: 'baixa' };

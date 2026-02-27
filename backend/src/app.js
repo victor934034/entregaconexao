@@ -57,7 +57,7 @@ app.get('/api/test', (req, res) => {
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'online',
-        version: 'Parser V4 Final',
+        version: 'Parser V5 Final',
         timestamp: new Date().toISOString()
     });
 });
