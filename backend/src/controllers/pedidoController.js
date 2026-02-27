@@ -121,7 +121,13 @@ exports.editarPedido = async (req, res) => {
 
         if (req.body.itens) {
             await ItemPedido.destroy({ where: { pedido_id: pedido.id }, transaction: t });
-            const itens = req.body.itens.map(i => ({ ...i, pedido_id: pedido.id }));
+
+            // Strip IDs to avoid primary key conflicts after destroy
+            const itens = req.body.itens.map(i => {
+                const { id, ...itemData } = i;
+                return { ...itemData, pedido_id: pedido.id };
+            });
+
             await ItemPedido.bulkCreate(itens, { transaction: t });
 
             // Recalculate total_itens
@@ -135,8 +141,9 @@ exports.editarPedido = async (req, res) => {
 
         return res.json({ message: 'Pedido atualizado.', pedido });
     } catch (error) {
+        console.error('Erro ao editar pedido:', error);
         await t.rollback();
-        res.status(500).json({ error: 'Erro ao editar pedido.' });
+        res.status(500).json({ error: 'Erro ao editar pedido.', details: error.message });
     }
 };
 

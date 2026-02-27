@@ -120,6 +120,9 @@ export default function EditarPedido({ params }: { params: { id: string } }) {
             if (formNormalizado.data_entrega_programada === '') formNormalizado.data_entrega_programada = null;
             if (formNormalizado.hora_entrega_programada === '') formNormalizado.hora_entrega_programada = null;
 
+            // Strip internal IDs from items
+            formNormalizado.itens = form.itens.map(({ id, idx, ...rest }: any) => rest);
+
             await api.put(`/pedidos/${params.id}`, formNormalizado);
             alert('Pedido atualizado com sucesso!');
             router.push('/pedidos');
