@@ -13,7 +13,12 @@ const PATTERNS = {
 function extractField(text, regex, defaultValue = '') {
     const match = text.match(regex);
     if (match && match[1]) {
-        return { value: match[1].trim(), confianca: 'alta' };
+        let val = match[1].trim();
+        // Limpeza extra para nome caso ainda venha com prefixos
+        if (regex === PATTERNS.nomeCliente) {
+            val = val.replace(/^[\d\s-]+/, '').trim();
+        }
+        return { value: val, confianca: 'alta' };
     }
     return { value: defaultValue, confianca: 'baixa' };
 }
@@ -37,21 +42,25 @@ function extractItems(text) {
 }
 
 function extractTotalLiquido(text) {
-    // Procura pela label final na linha de cabeçalho dos totalizadores
-    const lines = text.split('\n');
-    const labelLineIndex = lines.findIndex(l => l.includes('Total Liquido R$'));
+    // Estratégia 1: Procurar na área de Recebimento (Valor R$ 854,59) - MAIS ROBUSTO
+    const recMatch = text.match(/Valor R\$\s*([\d,.]+)/i);
+    if (recMatch) return { value: recMatch[1].trim(), confianca: 'alta' };
 
-    if (labelLineIndex !== -1 && lines[labelLineIndex + 1]) {
-        const valueLine = lines[labelLineIndex + 1];
-        // O valor do Total Líquido é SEMPRE o último valor numérico da linha de totalizadores
-        const numbers = valueLine.match(/[\d,.]+/g);
+    // Estratégia 2: Procurar após o vencimento (0) data valor
+    const vencMatch = text.match(/\d{2}\/\d{2}\/\d{2}\s+([\d,.]+)/);
+    if (vencMatch) return { value: vencMatch[1].trim(), confianca: 'alta' };
+
+    // Estratégia 3: Totalizadores (Fallback para o padrão anterior mas com limpeza de "esmagamento")
+    const lines = text.split('\n');
+    const labelIdx = lines.findIndex(l => l.includes('Total Liquido R$'));
+    if (labelIdx !== -1 && lines[labelIdx + 1]) {
+        const valueLine = lines[labelIdx + 1];
+        const numbers = valueLine.match(/\d+,\d{2}/g); // Procura especificamente padrões de reais (XX,XX)
         if (numbers && numbers.length > 0) {
-            let finalValue = numbers[numbers.length - 1];
-            // Se o último valor for '0,00' e houver mais de um, pode ser que o PDF tenha colunas extras
-            // Mas no padrão BR77, o total é o último à direita.
-            return { value: finalValue, confianca: 'alta' };
+            return { value: numbers[numbers.length - 1], confianca: 'alta' };
         }
     }
+
     return { value: '0,00', confianca: 'baixa' };
 }
 
@@ -77,11 +86,18 @@ function decomporEndereco(text) {
 
     if (parts.length >= 2) {
         // Se a parte 2 for um complemento (CASA 2), tenta pegar o bairro na parte 3
-        if (parts[1].toUpperCase().includes('CASA') || parts[1].toUpperCase().includes('APTO')) {
+        if (parts[1].toUpperCase().includes('CASA') || parts[1].toUpperCase().includes('APTO') || parts[1].toUpperCase().includes('LOJA')) {
             bairro = parts[parts.length - 1].trim();
         } else {
             bairro = parts[1].trim();
         }
+    }
+
+    // Se o número ainda estiver vazio e o logradouro tiver vírgula
+    if (!numero && logradouro.includes(',')) {
+        const spl = logradouro.split(',');
+        logradouro = spl[0].trim();
+        numero = spl[1].trim();
     }
 
     return { logradouro, numero, bairro, original };
@@ -110,6 +126,11 @@ async function parsePedidoPdf(filePath) {
             },
             itens: extractItems(text)
         };
+
+        // Log para depuração em caso de erro residual
+        if (parsedData.totalLiquido.value.length > 15) {
+            console.error('TOTAL LÍQUIDO ANORMAL DETECTADO:', parsedData.totalLiquido.value);
+        }
 
         return parsedData;
 
