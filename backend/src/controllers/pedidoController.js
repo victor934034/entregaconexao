@@ -169,11 +169,29 @@ exports.excluirPedido = async (req, res) => {
 
 exports.pedidosEntregador = async (req, res) => {
     try {
+        const { dataInicio, dataFim } = req.query;
+        const { uid } = req.params;
+        const { Op } = require('sequelize');
+
+        const where = { entregador_id: uid };
+
+        if (dataInicio && dataFim) {
+            where.data_pedido = {
+                [Op.between]: [new Date(dataInicio), new Date(dataFim)]
+            };
+        } else if (dataInicio) {
+            where.data_pedido = {
+                [Op.gte]: new Date(dataInicio)
+            };
+        }
+
         const pedidos = await Pedido.findAll({
-            where: { entregador_id: req.params.uid }
+            where,
+            order: [['data_pedido', 'DESC']]
         });
         return res.json(pedidos);
     } catch (error) {
+        console.error('Erro ao buscar entregas:', error);
         res.status(500).json({ error: 'Erro ao buscar entregas.' });
     }
 };

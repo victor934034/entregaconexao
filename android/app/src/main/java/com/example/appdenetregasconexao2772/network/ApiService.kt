@@ -16,7 +16,11 @@ interface ApiService {
     suspend fun getPedidos(@Query("status") status: String? = null): Response<List<Pedido>>
 
     @GET("pedidos/entregador/{uid}")
-    suspend fun getPedidosEntregador(@Path("uid") uid: Int): Response<List<Pedido>>
+    suspend fun getPedidosEntregador(
+        @Path("uid") uid: Int,
+        @Query("dataInicio") dataInicio: String? = null,
+        @Query("dataFim") dataFim: String? = null
+    ): Response<List<Pedido>>
 
     @GET("pedidos/{id}")
     suspend fun getPedidoDetalhes(@Path("id") id: Int): Response<Pedido>

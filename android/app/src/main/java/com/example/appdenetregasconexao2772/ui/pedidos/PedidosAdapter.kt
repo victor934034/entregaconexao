@@ -11,7 +11,8 @@ import com.example.appdenetregasconexao2772.model.Pedido
 
 class PedidosAdapter(
     private var pedidos: List<Pedido>,
-    private val onAtualizarClick: (Pedido) -> Unit
+    private val onAtualizarClick: (Pedido) -> Unit,
+    private val onVerDetalhesClick: ((Pedido) -> Unit)? = null
 ) : RecyclerView.Adapter<PedidosAdapter.PedidoViewHolder>() {
 
     class PedidoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -36,6 +37,10 @@ class PedidosAdapter(
 
         holder.btnAtualizar.setOnClickListener {
             onAtualizarClick(pedido)
+        }
+
+        holder.itemView.setOnClickListener {
+            onVerDetalhesClick?.invoke(pedido)
         }
     }
 

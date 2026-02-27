@@ -11,7 +11,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.example.appdenetregasconexao2772.R
-import com.example.appdenetregasconexao2772.ui.pedidos.PedidosActivity
+import com.example.appdenetregasconexao2772.MainActivity
 
 class LoginActivity : AppCompatActivity() {
 
@@ -23,7 +23,7 @@ class LoginActivity : AppCompatActivity() {
 
         val prefs = getSharedPreferences("conexao_prefs", Context.MODE_PRIVATE)
         if (prefs.getString("token", null) != null) {
-            startActivity(Intent(this, PedidosActivity::class.java))
+            startActivity(Intent(this, MainActivity::class.java))
             finish()
             return
         }
@@ -52,7 +52,7 @@ class LoginActivity : AppCompatActivity() {
                     Toast.makeText(this, "Apenas entregadores acessam este App. Administradores devem usar o Painel Web.", Toast.LENGTH_LONG).show()
                 } else {
                     Toast.makeText(this, "Bem-vindo!", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, PedidosActivity::class.java))
+                    startActivity(Intent(this, MainActivity::class.java))
                     finish()
                 }
             }.onFailure {

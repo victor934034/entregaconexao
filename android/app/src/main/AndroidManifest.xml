@@ -25,6 +25,8 @@
         </activity>
         <activity android:name=".ui.login.RegisterActivity" android:exported="false" />
         <activity android:name=".ui.pedidos.PedidosActivity" android:exported="false" />
+        <activity android:name=".MainActivity" android:exported="false" />
+        <activity android:name=".ui.pedidos.PedidoDetalhesActivity" android:exported="false" />
     </application>
 
 </manifest>

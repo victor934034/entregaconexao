@@ -16,19 +16,35 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
 
     private val _pedidos = MutableLiveData<List<Pedido>>()
     val pedidos: LiveData<List<Pedido>> = _pedidos
-    
+
+    private val _pedidoDetalhe = MutableLiveData<Pedido?>()
+    val pedidoDetalhe: LiveData<Pedido?> = _pedidoDetalhe
+
     private val _error = MutableLiveData<String>()
     val error: LiveData<String> = _error
 
     private val _statusUpdateSuccess = MutableLiveData<Boolean>()
     val statusUpdateSuccess: LiveData<Boolean> = _statusUpdateSuccess
 
+    fun carregarDetalhesPedido(pedidoId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getPedidoDetalhes(pedidoId)
+                if (response.isSuccessful) {
+                    _pedidoDetalhe.value = response.body()
+                } else {
+                    _error.value = "Falha ao buscar detalhes do pedido"
+                }
+            } catch (e: Exception) {
+                _error.value = "Erro de rede: ${e.message}"
+            }
+        }
+    }
+
     fun carregarPedidosEntregador() {
         val prefs = getApplication<Application>().getSharedPreferences("conexao_prefs", Context.MODE_PRIVATE)
         val uid = prefs.getInt("uid", -1)
-        
         if(uid == -1) return
-
         viewModelScope.launch {
             try {
                 val response = apiService.getPedidosEntregador(uid)
@@ -36,6 +52,23 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                     _pedidos.value = response.body() ?: emptyList()
                 } else {
                     _error.value = "Falha ao carregar pedidos"
+                }
+            } catch (e: Exception) {
+                _error.value = "Erro de rede: ${e.message}"
+            }
+        }
+    }
+
+    fun carregarPedidosPorData(uid: Int, data: String) {
+        viewModelScope.launch {
+            try {
+                val dataFim = data + "T23:59:59"
+                val dataInicio = data + "T00:00:00"
+                val response = apiService.getPedidosEntregador(uid, dataInicio, dataFim)
+                if (response.isSuccessful) {
+                    _pedidos.value = response.body() ?: emptyList()
+                } else {
+                    _error.value = "Falha ao carregar pedidos da data"
                 }
             } catch (e: Exception) {
                 _error.value = "Erro de rede: ${e.message}"

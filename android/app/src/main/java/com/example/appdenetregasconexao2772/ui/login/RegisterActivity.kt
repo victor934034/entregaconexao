@@ -35,9 +35,8 @@ class RegisterActivity : AppCompatActivity() {
             btnCadastrar.isEnabled = true
             
             result.onSuccess {
-                Toast.makeText(this, "Cadastro realizado com sucesso!", Toast.LENGTH_SHORT).show()
-                // Após o cadastro, o ViewModel já salvou o token, então podemos ir para a lista de pedidos
-                val intent = Intent(this, com.example.appdenetregasconexao2772.ui.pedidos.PedidosActivity::class.java)
+                Toast.makeText(this, "Bem-vindo! Cadastro realizado com sucesso!", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this, com.example.appdenetregasconexao2772.MainActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 startActivity(intent)
                 finish()
