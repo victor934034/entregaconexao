@@ -32,7 +32,7 @@ exports.listarPedidos = async (req, res) => {
         return res.json(pedidos);
     } catch (error) {
         console.error('Erro ao listar pedidos:', error);
-        res.status(500).json({ error: 'Erro ao buscar pedidos.' });
+        res.status(500).json({ error: 'Erro ao buscar pedidos.', details: error.message });
     }
 };
 
@@ -55,7 +55,8 @@ exports.detalhesPedido = async (req, res) => {
 
         return res.json(pedido);
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar detalhes do pedido.' });
+        console.error('Erro ao buscar detalhes do pedido:', error);
+        res.status(500).json({ error: 'Erro ao buscar detalhes do pedido.', details: error.message });
     }
 };
 
