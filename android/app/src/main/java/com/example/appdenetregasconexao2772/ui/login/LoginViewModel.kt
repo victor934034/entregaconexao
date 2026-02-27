@@ -43,7 +43,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         val json = org.json.JSONObject(errorBody)
                         json.optString("error", "E-mail ou senha incorretos")
                     } catch (e: Exception) {
-                        "Falha no servidor (${response.code()})"
+                        "Corpo ${response.code()}: " + (errorBody?.take(150) ?: "Sem corpo")
                     }
                     _loginResult.value = Result.failure(Exception(errorMessage))
                 }

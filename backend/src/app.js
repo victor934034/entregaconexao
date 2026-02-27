@@ -23,6 +23,28 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Monitor de requisições para debug remoto
+let lastRequests = [];
+app.use((req, res, next) => {
+    if (req.url !== '/api/debug-logs') {
+        lastRequests.unshift({
+            timestamp: new Date().toISOString(),
+            method: req.method,
+            url: req.url,
+            headers: req.headers
+        });
+        if (lastRequests.length > 50) lastRequests.pop();
+    }
+    next();
+});
+
+app.get('/api/debug-logs', (req, res) => {
+    res.json({
+        uptime: process.uptime(),
+        lastRequests
+    });
+});
+
 // Serve PDFs route
 app.use('/uploads/pdfs', express.static(path.join(__dirname, '../uploads/pdfs')));
 

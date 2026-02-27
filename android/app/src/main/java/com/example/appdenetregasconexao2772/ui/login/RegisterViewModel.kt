@@ -42,7 +42,7 @@ class RegisterViewModel(application: Application) : AndroidViewModel(application
                         val json = org.json.JSONObject(errorBody)
                         json.optString("error", "Erro desconhecido")
                     } catch (e: Exception) {
-                        "Falha no servidor (${response.code()})"
+                        "Corpo 404: " + (errorBody?.take(150) ?: "Sem corpo")
                     }
                     _registerResult.value = Result.failure(Exception(errorMessage))
                 }
