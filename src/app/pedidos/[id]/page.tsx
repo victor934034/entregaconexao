@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Clock, MapPin, Phone, User, Package, Calendar, Banknote, Edit2, Trash2, Printer } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Phone, User, Package, Calendar, Banknote, Edit2, Trash2, Printer, Archive, FileText } from 'lucide-react';
 
 export default function DetalhesPedido({ params }: { params: { id: string } }) {
     const router = useRouter();
