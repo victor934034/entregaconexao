@@ -13,6 +13,7 @@ import com.example.appdenetregasconexao2772.R
 import android.widget.ImageView
 import android.widget.TextView
 import com.example.appdenetregasconexao2772.ui.perfil.PlaceholderActivity
+import com.example.appdenetregasconexao2772.ui.perfil.EditarPerfilActivity
 
 class PerfilFragment : Fragment() {
 
