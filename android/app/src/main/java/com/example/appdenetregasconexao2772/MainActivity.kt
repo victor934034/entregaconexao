@@ -38,6 +38,14 @@ class MainActivity : AppCompatActivity() {
         // Conecta ao Socket.io para atualizações em tempo real
         com.example.appdenetregasconexao2772.network.SocketManager.connect()
 
+        val viewModel = androidx.lifecycle.ViewModelProvider(this)[com.example.appdenetregasconexao2772.ui.pedidos.PedidosViewModel::class.java]
+        viewModel.sessionExpired.observe(this) { expired ->
+            if (expired) {
+                startActivity(Intent(this, com.example.appdenetregasconexao2772.ui.login.LoginActivity::class.java))
+                finish()
+            }
+        }
+
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_pedidos -> { switchFragment(HomeFragment()); true }

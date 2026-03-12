@@ -140,7 +140,7 @@ class PedidoDetalhesActivity : AppCompatActivity() {
 
     private fun preencherTela(pedido: Pedido) {
         binding.tvClienteDetalhe.text = pedido.nome_cliente ?: "Sem nome"
-        binding.tvEnderecoDetalhe.text = "${pedido.logradouro ?: "Endereço não informado"}, ${pedido.numero_end ?: ""} – ${pedido.bairro ?: ""}"
+        binding.tvEnderecoDetalhe.text = "${pedido.endereco ?: "Endereço não informado"}, ${pedido.numero_end ?: ""} – ${pedido.bairro ?: ""}"
         
         val total = pedido.total_liquido ?: 0.0
         binding.tvTotalDetalhe.text = String.format("R$ %.2f", total)

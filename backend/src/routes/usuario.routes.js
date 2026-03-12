@@ -10,6 +10,8 @@ router.use(authMiddleware);
 // Rotas que o próprio usuário pode acessar
 router.get('/stats', usuarioController.statsUsuario);
 router.get('/:uid/stats', usuarioController.statsUsuario);
+router.patch('/me/desativar', usuarioController.desativarPropriaConta);
+router.delete('/me/excluir', usuarioController.excluirPropriaConta);
 
 // Apenas SUPER_ADM e ADM com permissão podem gerenciar usuários
 router.use(permissionMiddleware('gerenciar_usuarios'));

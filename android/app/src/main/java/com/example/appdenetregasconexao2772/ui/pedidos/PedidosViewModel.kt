@@ -14,26 +14,8 @@ import kotlinx.coroutines.launch
 class PedidosViewModel(application: Application) : AndroidViewModel(application) {
     private val apiService = RetrofitClient.create(application)
 
-    private val _pedidos = MutableLiveData<List<Pedido>>()
-    val pedidos: LiveData<List<Pedido>> = _pedidos
-
-    private val _pedidoDetalhe = MutableLiveData<Pedido?>()
-    val pedidoDetalhe: LiveData<Pedido?> = _pedidoDetalhe
-
-    private val _error = MutableLiveData<String>()
-    val error: LiveData<String> = _error
-
-    private val _statusUpdateSuccess = MutableLiveData<Boolean>()
-    val statusUpdateSuccess: LiveData<Boolean> = _statusUpdateSuccess
-
-    private val _totalEntregas = MutableLiveData<Int>()
-    val totalEntregas: LiveData<Int> = _totalEntregas
-
-    private val _totalGanhos = MutableLiveData<Double>()
-    val totalGanhos: LiveData<Double> = _totalGanhos
-
-    // Cache para o calendário: Data -> Lista de Pedidos
-    private val calendarCache = mutableMapOf<String, List<Pedido>>()
+    private val _sessionExpired = MutableLiveData<Boolean>()
+    val sessionExpired: LiveData<Boolean> = _sessionExpired
 
     fun carregarDetalhesPedido(pedidoId: Int) {
         viewModelScope.launch {
@@ -41,13 +23,22 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                 val response = apiService.getPedidoDetalhes(pedidoId)
                 if (response.isSuccessful) {
                     _pedidoDetalhe.value = response.body()
+                } else if (response.code() == 401) {
+                    handleUnauthorized()
                 } else {
-                    _error.value = "Falha ao buscar detalhes do pedido"
+                    _error.value = "Falha ao buscar detalhes"
                 }
             } catch (e: Exception) {
                 _error.value = "Erro de rede: ${e.message}"
             }
         }
+    }
+
+    private fun handleUnauthorized() {
+        val prefs = getApplication<Application>().getSharedPreferences("conexao_prefs", Context.MODE_PRIVATE)
+        prefs.edit().remove("token").apply()
+        _sessionExpired.value = true
+        _error.value = "Sessão expirada. Faça login novamente."
     }
 
     fun carregarPedidosEntregador() {
@@ -65,8 +56,10 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                     val entregues = lista.filter { it.status == "ENTREGUE" || it.status == "CONCLUIDO" }
                     _totalEntregas.value = entregues.size
                     _totalGanhos.value = entregues.sumOf { it.total_liquido ?: 0.0 }
+                } else if (response.code() == 401) {
+                    handleUnauthorized()
                 } else {
-                    _error.value = "Falha ao carregar pedidos"
+                    _error.value = "Falha ao carregar pedidos: ${response.code()}"
                 }
             } catch (e: Exception) {
                 _error.value = "Erro de rede: ${e.message}"
@@ -75,7 +68,6 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun carregarPedidosPorData(uid: Int, data: String) {
-        // Verifica no cache primeiro
         if (calendarCache.containsKey(data)) {
             _pedidos.value = calendarCache[data]
             return
@@ -88,8 +80,10 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                 val response = apiService.getPedidosEntregador(uid, dataInicio, dataFim)
                 if (response.isSuccessful) {
                     val list = response.body() ?: emptyList()
-                    calendarCache[data] = list // Salva no cache
+                    calendarCache[data] = list
                     _pedidos.value = list
+                } else if (response.code() == 401) {
+                    handleUnauthorized()
                 } else {
                     _error.value = "Falha ao carregar pedidos da data"
                 }
@@ -107,8 +101,10 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                 val response = apiService.updateStatus(pedidoId, req)
                 if (response.isSuccessful) {
                     _statusUpdateSuccess.value = true
-                    carregarPedidosEntregador() // recarrega a lista
-                    carregarEstatisticas() // recarrega stats
+                    carregarPedidosEntregador()
+                    carregarEstatisticas()
+                } else if (response.code() == 401) {
+                    handleUnauthorized()
                 } else {
                     _error.value = "Falha ao atualizar status"
                 }
@@ -130,10 +126,10 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                     val stats = response.body()
                     _totalEntregas.value = stats?.total_entregas ?: 0
                     _totalGanhos.value = stats?.ganhos ?: 0.0
+                } else if (response.code() == 401) {
+                    handleUnauthorized()
                 }
-            } catch (e: Exception) {
-                // Silently fail for stats, or handle error
-            }
+            } catch (e: Exception) {}
         }
     }
 }

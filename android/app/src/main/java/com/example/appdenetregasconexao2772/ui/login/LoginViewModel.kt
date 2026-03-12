@@ -54,4 +54,23 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    private val _forgotPasswordResult = MutableLiveData<Result<Unit>>()
+    val forgotPasswordResult: LiveData<Result<Unit>> = _forgotPasswordResult
+
+    fun forgotPassword(email: String) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.forgotPassword(mapOf("email" to email))
+                if (response.isSuccessful) {
+                    _forgotPasswordResult.value = Result.success(Unit)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _forgotPasswordResult.value = Result.failure(Exception("Erro: $errorBody"))
+                }
+            } catch (e: Exception) {
+                _forgotPasswordResult.value = Result.failure(e)
+            }
+        }
+    }
 }

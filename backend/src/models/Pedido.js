@@ -29,7 +29,7 @@ const Pedido = sequelize.define('Pedido', {
     email_cliente: DataTypes.STRING(150),
     celular_cliente: DataTypes.STRING(20),
 
-    logradouro: DataTypes.STRING(200),
+    endereco: DataTypes.STRING(200),
     numero_end: DataTypes.STRING(20),
     complemento: DataTypes.STRING(100),
     bairro: DataTypes.STRING(100),

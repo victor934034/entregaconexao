@@ -21,7 +21,7 @@ interface FormState {
     estado: string;
     cidade: string;
     bairro: string;
-    logradouro: string;
+    endereco: string;
     numero_end: string;
     observacao_endereco: string;
     email_cliente: string;
@@ -47,7 +47,7 @@ export default function NovoPedido() {
         estado: 'PR',
         cidade: 'Curitiba',
         bairro: '',
-        logradouro: '',
+        endereco: '',
         numero_end: '',
         observacao_endereco: '',
         email_cliente: '',
@@ -148,7 +148,7 @@ export default function NovoPedido() {
                     estado: 'PR',
                     cidade: 'Curitiba',
                     bairro: p.endereco?.bairro || '',
-                    logradouro: p.endereco?.logradouro || '',
+                    endereco: p.endereco?.endereco || '',
                     numero_end: p.endereco?.numero || '',
                     observacao_endereco: p.endereco?.observacao || '',
                     email_cliente: p.emailCliente?.value || '',
@@ -186,7 +186,7 @@ export default function NovoPedido() {
                     telefone_cliente: verifyTrust(data.telefoneCliente, 'Telefone do Cliente'),
                     total_liquido: verifyTrust(data.totalLiquido, 'Total Líquido'),
                     forma_pagamento: verifyTrust(data.formaPagamento, 'Forma de Pagamento'),
-                    logradouro: data.endereco?.logradouro || '',
+                    endereco: data.endereco?.endereco || '',
                     numero_end: data.endereco?.numero || '',
                     bairro: data.endereco?.bairro || '',
                     observacao_endereco: data.endereco?.observacao || '',
@@ -329,7 +329,7 @@ export default function NovoPedido() {
                                                 estado: 'PR',
                                                 cidade: 'Curitiba',
                                                 bairro: p.endereco?.bairro || '',
-                                                logradouro: p.endereco?.logradouro || '',
+                                                endereco: p.endereco?.endereco || '',
                                                 numero_end: p.endereco?.numero || '',
                                                 observacao_endereco: p.endereco?.observacao || '',
                                                 data_entrega_programada: '',
@@ -415,7 +415,7 @@ export default function NovoPedido() {
                                                 estado: 'PR',
                                                 cidade: 'Curitiba',
                                                 bairro: p.endereco?.bairro || '',
-                                                logradouro: p.endereco?.logradouro || '',
+                                                endereco: p.endereco?.endereco || '',
                                                 numero_end: p.endereco?.numero || '',
                                                 observacao_endereco: p.endereco?.observacao || '',
                                                 data_entrega_programada: '',
@@ -588,8 +588,8 @@ export default function NovoPedido() {
                         <label className="block text-gray-700 font-medium mb-1">Endereço</label>
                         <input
                             required
-                            value={currentForm.logradouro}
-                            onChange={e => updateFormField('logradouro', e.target.value)}
+                            value={currentForm.endereco}
+                            onChange={e => updateFormField('endereco', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                             placeholder="Ex: Rua das Flores"
                         />
@@ -693,8 +693,15 @@ export default function NovoPedido() {
                                                 <AlertCircle size={32} className="text-gray-300" />
                                             </div>
                                             <div className="max-w-xs text-sm">
-                                                Nenhum item adicionado. Use o botão acima para adicionar manualmente ou importe um PDF.
+                                                Nenhum item adicionado. Use o botão abaixo para adicionar manualmente ou importe um PDF.
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={addItem}
+                                                className="mt-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-semibold border border-blue-200 hover:bg-blue-200 transition-colors"
+                                            >
+                                                Adicionar Item Manualmente
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

@@ -42,9 +42,19 @@ class CalendarioFragment : Fragment() {
         setupRecyclerViews()
         setupCalendarNavigation()
         observeViewModel()
+        setupSocketListeners()
 
         updateDaysList()
         carregarConfiguracaoInicial()
+    }
+
+    private fun setupSocketListeners() {
+        com.example.appdenetregasconexao2772.network.SocketManager.getSocket()?.apply {
+            on("pedido:criado") { activity?.runOnUiThread { carregarPorData(sdf.format(selectedDate)) } }
+            on("pedido:atualizado") { activity?.runOnUiThread { carregarPorData(sdf.format(selectedDate)) } }
+            on("pedido:status") { activity?.runOnUiThread { carregarPorData(sdf.format(selectedDate)) } }
+            on("pedido:excluido") { activity?.runOnUiThread { carregarPorData(sdf.format(selectedDate)) } }
+        }
     }
 
     private fun carregarConfiguracaoInicial() {

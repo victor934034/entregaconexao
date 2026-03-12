@@ -122,7 +122,7 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
                                 <MapPin size={18} className="text-blue-600" /> Endereço de Entrega
                             </h3>
                             <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${pedido.logradouro}, ${pedido.numero_end} - ${pedido.bairro}, ${pedido.cidade}`)}`}
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${pedido.endereco}, ${pedido.numero_end} - ${pedido.bairro}, ${pedido.cidade}`)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -132,7 +132,7 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
                         </div>
                         <div>
                             <p className="font-medium text-gray-900 text-lg">
-                                {pedido.logradouro}, {pedido.numero_end}
+                                {pedido.endereco}, {pedido.numero_end}
                             </p>
                             <p className="text-gray-600">
                                 {pedido.bairro}, {pedido.cidade} - {pedido.estado} {pedido.cep ? `(CEP: ${pedido.cep})` : ''}

@@ -154,3 +154,41 @@ exports.statsUsuario = async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar estatísticas.' });
     }
 };
+
+exports.desativarPropriaConta = async (req, res) => {
+    try {
+        const usuario = await Usuario.findByPk(req.usuario.id);
+        if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado.' });
+
+        usuario.ativo = false;
+        await usuario.save();
+
+        return res.json({ message: 'Sua conta foi desativada com sucesso.' });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao desativar conta.' });
+    }
+};
+
+exports.excluirPropriaConta = async (req, res) => {
+    try {
+        const usuario = await Usuario.findByPk(req.usuario.id);
+        if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado.' });
+
+        // Verificar se há pedidos pendentes
+        const pedidosPendentes = await Pedido.count({
+            where: { entregador_id: usuario.id, status: ['PENDENTE', 'EM_ROTA', 'RETIRADO'] }
+        });
+
+        if (pedidosPendentes > 0) {
+            return res.status(400).json({
+                error: 'Não é possível excluir a conta com pedidos em andamento. Conclua suas entregas primeiro.'
+            });
+        }
+
+        await usuario.destroy();
+        return res.json({ message: 'Sua conta foi excluída permanentemente.' });
+    } catch (error) {
+        console.error('Erro ao excluir conta:', error);
+        res.status(500).json({ error: 'Erro ao excluir conta.' });
+    }
+};

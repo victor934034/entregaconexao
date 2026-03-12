@@ -34,10 +34,15 @@ class LoginActivity : AppCompatActivity() {
         val etSenha = findViewById<EditText>(R.id.etSenha)
         val btnLogin = findViewById<Button>(R.id.btnLogin)
         val tvRegistrar = findViewById<android.widget.TextView>(R.id.tvRegistrar)
+        val tvEsqueciSenha = findViewById<android.widget.TextView>(R.id.tvEsqueciSenha)
         val progressBar = findViewById<ProgressBar>(R.id.progressBar)
 
         tvRegistrar.setOnClickListener {
             startActivity(Intent(this, RegisterActivity::class.java))
+        }
+
+        tvEsqueciSenha.setOnClickListener {
+            startActivity(Intent(this, ForgotPasswordActivity::class.java))
         }
 
         viewModel.loginResult.observe(this) { result ->
@@ -64,13 +69,19 @@ class LoginActivity : AppCompatActivity() {
             val email = etEmail.text.toString()
             val senha = etSenha.text.toString()
 
-            if (email.isNotEmpty() && senha.isNotEmpty()) {
-                progressBar.visibility = View.VISIBLE
-                btnLogin.isEnabled = false
-                viewModel.login(email, senha)
-            } else {
+            if (email.isEmpty() || senha.isEmpty()) {
                 Toast.makeText(this, "Preencha todos os campos", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
+
+            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                Toast.makeText(this, "E-mail inválido", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            progressBar.visibility = View.VISIBLE
+            btnLogin.isEnabled = false
+            viewModel.login(email, senha)
         }
     }
 }

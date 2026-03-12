@@ -5,6 +5,7 @@ module.exports = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            console.log('⚠️ AuthMiddleware: Header de autorização ausente ou malformatado');
             return res.status(401).json({ error: 'Token não fornecido ou inválido.' });
         }
 
@@ -30,6 +31,7 @@ module.exports = async (req, res, next) => {
 
         next();
     } catch (error) {
-        return res.status(401).json({ error: 'Token expirado ou inválido.' });
+        console.error('❌ Erro no AuthMiddleware:', error.message);
+        return res.status(401).json({ error: 'Token expirado ou inválido.', details: error.message });
     }
 };

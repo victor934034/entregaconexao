@@ -22,7 +22,7 @@ interface FormState {
     estado: string;
     cidade: string;
     bairro: string;
-    logradouro: string;
+    endereco: string;
     numero_end: string;
     observacao_endereco: string;
     data_entrega_programada: string;
@@ -46,7 +46,7 @@ export default function EditarPedido({ params }: { params: { id: string } }) {
         estado: '',
         cidade: '',
         bairro: '',
-        logradouro: '',
+        endereco: '',
         numero_end: '',
         observacao_endereco: '',
         data_entrega_programada: '',
@@ -76,7 +76,7 @@ export default function EditarPedido({ params }: { params: { id: string } }) {
                     estado: p.estado || 'PR',
                     cidade: p.cidade || 'Curitiba',
                     bairro: p.bairro || '',
-                    logradouro: p.logradouro || '',
+                    endereco: p.endereco || '',
                     numero_end: p.numero_end || '',
                     observacao_endereco: p.observacao_endereco || '',
                     data_entrega_programada: p.data_entrega_programada || '',
@@ -155,10 +155,12 @@ export default function EditarPedido({ params }: { params: { id: string } }) {
         setForm({ ...form, itens: newItens });
     };
 
-    if (loading) return <div className="p-12 text-center text-gray-500 flex flex-col items-center gap-2">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
-        Carregando dados do pedido...
-    </div>;
+    if (loading) return (
+        <div className="p-12 text-center text-gray-500 flex flex-col items-center gap-2">
+            <Loader2 className="animate-spin text-blue-600" size={32} />
+            Carregando dados do pedido...
+        </div>
+    );
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
@@ -253,11 +255,11 @@ export default function EditarPedido({ params }: { params: { id: string } }) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                     <div className="sm:col-span-2">
-                        <label className="block text-gray-700 font-medium mb-1">Logradouro</label>
+                        <label className="block text-gray-700 font-medium mb-1">Endereço</label>
                         <input
                             required
-                            value={form.logradouro}
-                            onChange={e => setForm({ ...form, logradouro: e.target.value })}
+                            value={form.endereco}
+                            onChange={e => setForm({ ...form, endereco: e.target.value })}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>

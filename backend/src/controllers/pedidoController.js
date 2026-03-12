@@ -20,7 +20,7 @@ exports.listarPedidos = async (req, res) => {
             where,
             attributes: [
                 'id', 'numero_pedido', 'data_pedido', 'nome_cliente', 'status',
-                'logradouro', 'numero_end', 'bairro', 'cidade', 'total_liquido',
+                'endereco', 'numero_end', 'bairro', 'cidade', 'total_liquido',
                 'data_entrega_programada', 'hora_entrega_programada', 'observacao_endereco', 'total_itens'
             ],
             include: [
@@ -282,7 +282,7 @@ exports.pedidosEntregador = async (req, res) => {
             where,
             attributes: [
                 'id', 'numero_pedido', 'data_pedido', 'nome_cliente', 'status',
-                'logradouro', 'numero_end', 'bairro', 'cidade', 'total_liquido',
+                'endereco', 'numero_end', 'bairro', 'cidade', 'total_liquido',
                 'data_entrega_programada', 'hora_entrega_programada', 'observacao_endereco', 'total_itens'
             ],
             include: [{ model: Usuario, as: 'entregador', attributes: ['id', 'nome'] }],

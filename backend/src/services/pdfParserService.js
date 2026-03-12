@@ -49,12 +49,12 @@ function extractTotalLiquido(text) {
         const afterTotal = text.substring(totalLiquidoPos);
         const matches = afterTotal.match(/\d+,\d{2}/g);
         if (matches && matches.length > 0) {
-            return { value: matches[matches.length - 1], confianca: 'alta' };
+            return { value: matches[0], confianca: 'alta' }; // It should be the first one after the label
         }
     }
     const allMatches = text.match(/\d+,\d{2}/g);
     if (allMatches && allMatches.length > 0) {
-        return { value: allMatches[allMatches.length - 1], confianca: 'alta' };
+        return { value: allMatches[allMatches.length - 1], confianca: 'alta' }; // Take last one as fallback
     }
     return { value: '0,00', confianca: 'baixa' };
 }
@@ -86,13 +86,21 @@ function extractTelefoneCliente(text) {
 }
 
 function decomporEndereco(text) {
+    let mainText = text;
     if (text.includes('Endereço de Entrega:')) {
         const match = text.match(/Endereço de Entrega:\s*\n([\s\S]+?)(?:\s+-\s+\n|Aprovação|$)/i);
-        if (!match) return { logradouro: '', numero: '', bairro: '', observacao: '', original: '' };
-        text = match[1].trim();
+        if (match) {
+            mainText = match[1].trim();
+        }
+    } else {
+        // Tenta achar o endereço após o Nome/Fone e antes dos Itens ou T.Valor R$
+        const endMatch = text.match(/(?:Fone|Celular):.*?\n([\s\S]+?)(?:Previsão Entrega|Data Entrega|Entregar em|T\.Valor R\$|Forma Pg|Vendedor|Condição)/i);
+        if (endMatch) {
+            mainText = endMatch[1].trim();
+        }
     }
 
-    const original = text;
+    const original = mainText;
     let logradouro = '';
     let numero = '';
     let bairro = '';
@@ -141,7 +149,7 @@ function decomporEndereco(text) {
     logradouro = logradouro.replace(/[(),]/g, '').trim();
     numero = numero.replace(/[(),]/g, '').trim();
 
-    return { logradouro, numero, bairro, observacao, original };
+    return { endereco: logradouro, numero, bairro, observacao, original };
 }
 
 async function parsePedidoPdf(filePath) {
@@ -168,7 +176,7 @@ async function parsePedidoPdf(filePath) {
             formaPagamento: extractField(text, PATTERNS.formaPagamento, ''),
             vencimento: extractField(text, PATTERNS.vencimento, ''),
             endereco: {
-                logradouro: endereco.logradouro,
+                endereco: endereco.endereco,
                 numero: endereco.numero,
                 bairro: endereco.bairro,
                 observacao: endereco.observacao,
@@ -216,7 +224,7 @@ async function parseListaEntrega(text) {
             emailCliente: { value: '', confianca: 'baixa' },
             totalLiquido: { value: '0,00', confianca: 'baixa' },
             formaPagamento: { value: '', confianca: 'baixa' },
-            endereco: { logradouro: '', numero: '', bairro: '', observacao: '' },
+            endereco: { endereco: '', numero: '', bairro: '', observacao: '' },
             itens: [],
             isFromList: true
         };
@@ -225,24 +233,43 @@ async function parseListaEntrega(text) {
         if (dateMatch) {
             pedido.dataPedido = { value: dateMatch[1], confianca: 'alta' };
             const afterDate = normalizedBlock.substring(dateMatch.index + dateMatch[0].length).trim();
-            const pgtoMatch = afterDate.match(/^[A-ZÀ-Ú\s]{3,20}/);
+            // Forma de pagamento geralmente está após a data, ou no final. Vamos ser mais flexíveis
+            const pgtoMatch = afterDate.match(/(Dinheiro|Cartão|Pix|Boleto|Transferência[a-zA-ZÀ-Ú\s]*)\b/i);
             if (pgtoMatch) {
                 pedido.formaPagamento = { value: pgtoMatch[0].trim(), confianca: 'alta' };
+            } else {
+                const generalPgto = afterDate.match(/^[A-ZÀ-Ú\s]{3,20}\b/);
+                if (generalPgto && !generalPgto[0].includes('T.Valor')) {
+                    pedido.formaPagamento = { value: generalPgto[0].trim(), confianca: 'média' };
+                }
             }
         }
 
         const moneyMatches = [...normalizedBlock.matchAll(/(\d[\d.]*,\d{2})/g)];
         if (moneyMatches.length > 0) {
-            pedido.totalLiquido = { value: moneyMatches[0][1], confianca: 'alta' };
+            pedido.totalLiquido = { value: moneyMatches[moneyMatches.length - 1][1], confianca: 'alta' };
         }
 
-        const headerText = normalizedBlock.split(pedido.numeroPedido.value)[1].split(dateMatch ? dateMatch[1] : '---')[0].trim();
+        let headerText = '';
+        if (dateMatch) {
+            headerText = normalizedBlock.split(pedido.numeroPedido.value)[1].split(dateMatch[1])[0].trim();
+        } else {
+            headerText = normalizedBlock.split(pedido.numeroPedido.value)[1];
+            if (headerText) {
+                if (headerText.indexOf('T.Valor') !== -1) {
+                    headerText = headerText.split('T.Valor')[0].trim();
+                }
+            } else {
+                headerText = '';
+            }
+        }
+
         if (headerText.includes(' - ')) {
             const p = headerText.split(' - ');
             pedido.nomeCliente = { value: p[0].trim(), confianca: 'alta' };
             pedido.telefoneCliente = { value: p.slice(1).join(' - ').trim(), confianca: 'alta' };
         } else {
-            const foneEndMatch = headerText.match(/(.*?)\s+(41\s*9?\d.*)/);
+            const foneEndMatch = headerText.match(/(.*?)\s+((?:\(?\d{2}\)?\s*)?9?\d{4,5}[-\s]*\d{4}.*)/);
             if (foneEndMatch) {
                 pedido.nomeCliente = { value: foneEndMatch[1].trim(), confianca: 'alta' };
                 pedido.telefoneCliente = { value: foneEndMatch[2].trim(), confianca: 'alta' };
@@ -251,21 +278,62 @@ async function parseListaEntrega(text) {
             }
         }
 
+        // Tentar extrair endereço no Multi-PDF (que fica entre o header e os itens)
+        let possibleAddress = '';
+        if (dateMatch) {
+            possibleAddress = originalBlock.substring(originalBlock.indexOf(dateMatch[1]) + dateMatch[1].length);
+            const tValorIdx = possibleAddress.indexOf('T.Valor R$');
+            if (tValorIdx !== -1) {
+                possibleAddress = possibleAddress.substring(0, tValorIdx);
+            }
+        }
+        if (possibleAddress.length > 5) {
+            const endDec = decomporEndereco(possibleAddress);
+            pedido.endereco = {
+                endereco: endDec.endereco,
+                numero: endDec.numero,
+                bairro: endDec.bairro,
+                observacao: endDec.observacao
+            };
+        }
+
         // Itens: Usa o originalBlock pois tem newlines
         const itemsPrefix = "T.Valor R$";
         const itemsAreaIndex = originalBlock.indexOf(itemsPrefix);
         if (itemsAreaIndex !== -1) {
             const itemsArea = originalBlock.substring(itemsAreaIndex + itemsPrefix.length);
-            const itemLines = itemsArea.split(/\n|\r/).map(l => l.trim()).filter(l => l.length > 10);
+            const itemLines = itemsArea.split(/\n|\r/).map(l => l.trim()).filter(l => l.length > 5); // 5 chars minimo
+            let idx = 1;
             itemLines.forEach(line => {
-                // Regex para index e código mesclados
-                const dense = line.match(/^(\d{1})(\d{6,})(.+?)\.{3,}(\d+,\d{3}),(\d{3})(\d+,\d{2})$/);
-                if (dense) {
+                // Regex mais flexível: captura quantidades decimais no final
+                const flexRegex = /^(\d+)?\s*(.+?)\s+(\d+[,.]\d{2,3}|\d+)\s*(un|pç|kg|mt)?/i;
+                const m = line.match(flexRegex);
+
+                // fallback pra formato denso
+                const dense = line.match(/^(\d{1})?(\d{6,})?(.+?)\.{3,}(\d+[,.]\d{3}),(\d{3})(\d+[,.]\d{2})$/);
+
+                if (dense && dense[3]) {
                     pedido.itens.push({
-                        idx: parseInt(dense[1]),
+                        idx: idx++,
                         descricao: dense[3].trim(),
                         quantidade: parseFloat(dense[4].replace(',', '.')),
                         unidade: 'un'
+                    });
+                } else if (m && m[2] && m[2].length > 3 && !m[2].includes('Total')) {
+                    // Try to extract quantity from end if flex didn't catch properly in group 3
+                    let desc = m[2].trim();
+                    let qtd = 1;
+
+                    const endQtd = line.match(/(\d+[,.]\d{2,4}|\d+)\s*(un|pç|kg|mt)?\s*(\d+[,.]\d{2})?$/i);
+                    if (endQtd) {
+                        qtd = parseFloat(endQtd[1].replace(',', '.'));
+                    }
+
+                    pedido.itens.push({
+                        idx: idx++,
+                        descricao: desc.replace(/\.+$/, '').trim(),
+                        quantidade: qtd,
+                        unidade: m[4] || 'un'
                     });
                 }
             });

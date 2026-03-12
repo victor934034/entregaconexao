@@ -56,6 +56,16 @@ class RegisterActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                Toast.makeText(this, "E-mail inválido", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (senha.length < 6) {
+                Toast.makeText(this, "A senha deve ter pelo menos 6 caracteres", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             if (senha != confirmar) {
                 Toast.makeText(this, "As senhas não coincidem", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener

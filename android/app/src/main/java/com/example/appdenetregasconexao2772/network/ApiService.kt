@@ -33,4 +33,7 @@ interface ApiService {
 
     @PUT("usuarios/{id}")
     suspend fun updateProfile(@Path("id") id: Int, @Body request: UpdateProfileRequest): Response<Map<String, Any>>
+
+    @POST("auth/forgot-password")
+    suspend fun forgotPassword(@Body request: Map<String, String>): Response<Map<String, Any>>
 }
