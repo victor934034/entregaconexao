@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { Upload, Save, AlertCircle, FileText, Layers, ChevronRight } from 'lucide-react';
+import { Upload, Save, AlertCircle, FileText, Layers, ChevronRight, Plus, Trash } from 'lucide-react';
 
 interface ItemPedido {
     idx?: number;
@@ -61,6 +61,27 @@ export default function NovoPedido() {
     const [warnings, setWarnings] = useState<string[]>([]);
     const [multiOrders, setMultiOrders] = useState<FormState[]>([]);
     const [currentMultiIndex, setCurrentMultiIndex] = useState<number | null>(null);
+
+    const addItem = () => {
+        const newItem: ItemPedido = { descricao: '', quantidade: 1, unidade: 'un' };
+        if (currentMultiIndex !== null) {
+            const newMulti = [...multiOrders];
+            newMulti[currentMultiIndex].itens = [...newMulti[currentMultiIndex].itens, newItem];
+            setMultiOrders(newMulti);
+        } else {
+            setForm(prev => ({ ...prev, itens: [...prev.itens, newItem] }));
+        }
+    };
+
+    const removeItem = (index: number) => {
+        if (currentMultiIndex !== null) {
+            const newMulti = [...multiOrders];
+            newMulti[currentMultiIndex].itens = newMulti[currentMultiIndex].itens.filter((_, i) => i !== index);
+            setMultiOrders(newMulti);
+        } else {
+            setForm(prev => ({ ...prev, itens: prev.itens.filter((_, i) => i !== index) }));
+        }
+    };
 
     const updateItem = (index: number, field: keyof ItemPedido, value: any) => {
         if (currentMultiIndex !== null) {
@@ -600,29 +621,40 @@ export default function NovoPedido() {
                             className="w-full border border-orange-200 bg-orange-50 rounded-lg p-2.5 focus:ring-2 focus:ring-orange-600 outline-none h-20"
                         />
                     </div>
+                </div>                <div className="flex items-center justify-between border-b pb-2 pt-4">
+                    <h3 className="font-semibold text-xl text-gray-800">Itens do Pedido</h3>
+                    <button
+                        type="button"
+                        onClick={addItem}
+                        className="flex items-center gap-1 text-sm bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors font-semibold shadow-sm"
+                    >
+                        <Plus size={16} />
+                        Adicionar Item
+                    </button>
                 </div>
 
-                <h3 className="font-semibold text-xl border-b pb-2 pt-4">Itens do Pedido</h3>
-                <div className="overflow-x-auto border rounded-xl">
+                <div className="overflow-x-auto border rounded-xl overflow-hidden shadow-sm">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 text-gray-700 uppercase text-xs">
                             <tr>
-                                <th className="px-4 py-3">#</th>
+                                <th className="px-4 py-3 w-10 text-center">#</th>
                                 <th className="px-4 py-3">Descrição</th>
-                                <th className="px-4 py-3 w-24">Qtd</th>
-                                <th className="px-4 py-3 w-20">Un</th>
+                                <th className="px-4 py-3 w-24 text-center">Qtd</th>
+                                <th className="px-4 py-3 w-20 text-center">Un</th>
+                                <th className="px-4 py-3 w-10 text-center">Ações</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y">
+                        <tbody className="divide-y text-gray-800">
                             {currentForm.itens.length > 0 ? (
                                 currentForm.itens.map((item, i) => (
-                                    <tr key={i} className="hover:bg-gray-50">
-                                        <td className="px-4 py-3 font-medium">{item.idx || i + 1}</td>
+                                    <tr key={i} className="hover:bg-gray-50/80 transition-colors group">
+                                        <td className="px-4 py-3 font-medium text-gray-400 text-center">{item.idx || i + 1}</td>
                                         <td className="px-4 py-3">
                                             <input
                                                 value={item.descricao}
                                                 onChange={e => updateItem(i, 'descricao', e.target.value)}
-                                                className="w-full border border-gray-200 focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none"
+                                                placeholder="Descrição do produto"
+                                                className="w-full border border-gray-100 focus:border-blue-300 focus:ring-1 focus:ring-blue-100 rounded px-2 py-1.5 outline-none bg-transparent transition-all"
                                             />
                                         </td>
                                         <td className="px-4 py-3">
@@ -631,22 +663,39 @@ export default function NovoPedido() {
                                                 step="0.001"
                                                 value={item.quantidade}
                                                 onChange={e => updateItem(i, 'quantidade', parseFloat(e.target.value) || 0)}
-                                                className="w-full border border-gray-200 focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none"
+                                                className="w-full border border-gray-100 focus:border-blue-300 focus:ring-1 focus:ring-blue-100 rounded px-2 py-1.5 outline-none bg-transparent text-center transition-all"
                                             />
                                         </td>
                                         <td className="px-4 py-3">
                                             <input
                                                 value={item.unidade}
                                                 onChange={e => updateItem(i, 'unidade', e.target.value)}
-                                                className="w-full border border-gray-200 focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none"
+                                                className="w-full border border-gray-100 focus:border-blue-300 focus:ring-1 focus:ring-blue-100 rounded px-2 py-1.5 outline-none bg-transparent text-center uppercase transition-all font-mono"
                                             />
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => removeItem(i)}
+                                                className="text-gray-300 hover:text-red-500 transition-colors p-1.5 hover:bg-red-50 rounded-lg group-hover:scale-110 active:scale-95"
+                                                title="Remover item"
+                                            >
+                                                <Trash size={16} />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">
-                                        Nenhum item importado.
+                                    <td colSpan={5} className="px-4 py-12 text-center text-gray-400 italic bg-gray-50/30">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="p-3 bg-white rounded-full shadow-sm border border-gray-100">
+                                                <AlertCircle size={32} className="text-gray-300" />
+                                            </div>
+                                            <div className="max-w-xs text-sm">
+                                                Nenhum item adicionado. Use o botão acima para adicionar manualmente ou importe um PDF.
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             )}
