@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.isActive
 
 class PedidosViewModel(application: Application) : AndroidViewModel(application) {
     private val apiService = RetrofitClient.create(application)
@@ -21,6 +22,25 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
     private val _sessionExpired = MutableLiveData<Boolean>()
     val sessionExpired: LiveData<Boolean> = _sessionExpired
 
+    private val _pedidoDetalhe = MutableLiveData<Pedido>()
+    val pedidoDetalhe: LiveData<Pedido> = _pedidoDetalhe
+
+    private val _error = MutableLiveData<String>()
+    val error: LiveData<String> = _error
+
+    private val _pedidos = MutableLiveData<List<Pedido>>()
+    val pedidos: LiveData<List<Pedido>> = _pedidos
+
+    private val _totalEntregas = MutableLiveData<Int>()
+    val totalEntregas: LiveData<Int> = _totalEntregas
+
+    private val _totalGanhos = MutableLiveData<Double>()
+    val totalGanhos: LiveData<Double> = _totalGanhos
+
+    private val calendarCache = mutableMapOf<String, List<Pedido>>()
+
+    private val _statusUpdateSuccess = MutableLiveData<Boolean>()
+    val statusUpdateSuccess: LiveData<Boolean> = _statusUpdateSuccess
     fun carregarDetalhesPedido(pedidoId: Int) {
         viewModelScope.launch {
             try {
@@ -154,7 +174,7 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
 
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
-            while(kotlinx.coroutines.isActive) {
+            while(isActive) {
                 try {
                     val response = apiService.getPedidosEntregador(uid)
                     if (response.isSuccessful) {
@@ -179,5 +199,4 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
         pollingJob?.cancel()
         pollingJob = null
     }
-}
 }
