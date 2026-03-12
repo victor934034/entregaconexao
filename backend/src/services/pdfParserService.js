@@ -172,8 +172,14 @@ async function parsePedidoPdf(filePath) {
         const data = await pdf(dataBuffer);
         const text = data.text;
 
+        // Detectar se é uma Lista de Entrega e Cobrança
+        if (text.includes('L I S T A   DE   E N T R E G A   E   C O B R A N Ç A')) {
+            return await parseListaEntrega(text);
+        }
+
         const endereco = decomporEndereco(text);
         const parsedData = {
+            isMulti: false,
             numeroPedido: extractField(text, PATTERNS.numeroPedido, '000'),
             dataPedido: extractField(text, PATTERNS.dataPedido, ''),
             dataEntregaProgramada: extractField(text, PATTERNS.dataEntrega, ''),
@@ -204,6 +210,116 @@ async function parsePedidoPdf(filePath) {
         console.error('Erro ao processar PDF:', error.message);
         throw new Error('Falha no processamento: ' + error.message);
     }
+}
+
+async function parseListaEntrega(text) {
+    const orders = [];
+    // Encontrar o bloco de R E L A Ç Ã O   DE  E N T R E G A S
+    const relacaoStart = text.indexOf('R E L A Ç Ã O   DE  E N T R E G A S');
+    if (relacaoStart === -1) return { isMulti: false, error: 'Lista de entrega não identificada' };
+
+    const relacaoText = text.substring(relacaoStart);
+
+    // Split por marcadores de item: "  001", "  002", etc no início da linha
+    // O padrão parece ser: duas espaços + 3 dígitos + espaço(s) + 14 espaços + número da nota
+    const itemSplitRegex = /\n\s{2}(\d{3})\s{14,}/g;
+    const blocks = relacaoText.split(itemSplitRegex);
+
+    // O primeiro bloco é o cabeçalho da relação
+    for (let i = 1; i < blocks.length; i += 2) {
+        const itemIdx = blocks[i];
+        const content = blocks[i + 1];
+        if (!content) continue;
+
+        const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length < 2) continue;
+
+        // Linha 1: Nota Fiscal Venda e Nome/Fone
+        // Ex: "029643  DIEGO - 4199611 - 3479"
+        const headerLine = lines[0];
+        const nfMatch = headerLine.match(/^(\d+)/);
+        const numero_pedido = nfMatch ? nfMatch[1] : `LISTA-${itemIdx}`;
+
+        let restoHeader = headerLine.replace(/^\d+/, '').trim();
+        // Separar Nome e Fone se possível
+        let nome_cliente = restoHeader;
+        let telefone_cliente = '';
+
+        // Se tiver "-", o que vem depois costuma ser fone
+        if (restoHeader.includes(' - ')) {
+            const parts = restoHeader.split(' - ');
+            nome_cliente = parts[0].trim();
+            telefone_cliente = parts.slice(1).join(' - ').trim();
+        } else if (restoHeader.match(/\d{2}/)) { // Se tiver números, tenta pegar como fone
+            const phoneMatch = restoHeader.match(/(.*?)\s+(\d.*)/);
+            if (phoneMatch) {
+                nome_cliente = phoneMatch[1].trim();
+                telefone_cliente = phoneMatch[2].trim();
+            }
+        }
+
+        // Linha 2: Data, Forma Pgto e Valor
+        // Ex: "12/03/2026            DINHEIRO             239,75"
+        const dataLine = lines[1];
+        const dataMatch = dataLine.match(/(\d{2}\/\d{2}\/\d{4})/);
+        const data_pedido = dataMatch ? dataMatch[1] : '';
+
+        const valorMatch = dataLine.match(/(\d+,\d{2})$/);
+        const total_liquido = valorMatch ? valorMatch[1] : '0,00';
+
+        // Forma de pagamento fica entre a data e o valor
+        let forma_pagamento = dataLine.replace(data_pedido || '', '').replace(total_liquido || '', '').trim();
+
+        // Tentar extrair endereço da Linha 3 (se existir e não for um item)
+        let endereco = { logradouro: '', numero: '', bairro: '', observacao: '' };
+        if (lines.length > 2 && !lines[2].match(/^\d+\d+\s+/) && !lines[2].match(/^\d{3}\s+/)) {
+            const addressLine = lines[2];
+            // Tenta decompor o endereço
+            const parts = addressLine.split(',').map(p => p.trim());
+            if (parts.length >= 2) {
+                endereco.logradouro = parts[0];
+                const numParts = parts[1].split(' ');
+                endereco.numero = numParts[0];
+                if (numParts.length > 1) {
+                    endereco.bairro = numParts.slice(1).join(' ');
+                }
+            } else {
+                endereco.logradouro = addressLine;
+            }
+        }
+
+        // Extrair itens deste bloco
+        const itens = [];
+        const itemLineRegex = /^(\d+)\d+\s+(.+?)\.{2,}(\d+[\d,.]*)/;
+        lines.forEach(line => {
+            const m = line.match(itemLineRegex);
+            if (m) {
+                itens.push({
+                    idx: parseInt(m[1]),
+                    descricao: m[2].trim(),
+                    quantidade: parseFloat(m[3].replace(',', '.')),
+                    unidade: 'un' // Unidade padrão para lista
+                });
+            }
+        });
+
+        orders.push({
+            numeroPedido: { value: numero_pedido, confianca: 'alta' },
+            dataPedido: { value: data_pedido, confianca: 'alta' },
+            nomeCliente: { value: nome_cliente, confianca: 'alta' },
+            telefoneCliente: { value: telefone_cliente, confianca: 'alta' },
+            totalLiquido: { value: total_liquido, confianca: 'alta' },
+            formaPagamento: { value: forma_pagamento, confianca: 'alta' },
+            endereco: endereco,
+            itens: itens,
+            isFromList: true
+        });
+    }
+
+    return {
+        isMulti: true,
+        pedidos: orders
+    };
 }
 
 module.exports = {

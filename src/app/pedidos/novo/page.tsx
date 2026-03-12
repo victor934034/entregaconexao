@@ -56,11 +56,21 @@ export default function NovoPedido() {
     });
 
     const [warnings, setWarnings] = useState<string[]>([]);
+    const [multiOrders, setMultiOrders] = useState<FormState[]>([]);
+    const [currentMultiIndex, setCurrentMultiIndex] = useState<number | null>(null);
 
     const updateItem = (index: number, field: keyof ItemPedido, value: any) => {
-        const newItens = [...form.itens];
-        newItens[index] = { ...newItens[index], [field]: value };
-        setForm({ ...form, itens: newItens });
+        if (currentMultiIndex !== null) {
+            const newMulti = [...multiOrders];
+            const newItens = [...newMulti[currentMultiIndex].itens];
+            newItens[index] = { ...newItens[index], [field]: value };
+            newMulti[currentMultiIndex] = { ...newMulti[currentMultiIndex], itens: newItens };
+            setMultiOrders(newMulti);
+        } else {
+            const newItens = [...form.itens];
+            newItens[index] = { ...newItens[index], [field]: value };
+            setForm({ ...form, itens: newItens });
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,6 +99,9 @@ export default function NovoPedido() {
 
         setLoading(true);
         setWarnings([]);
+        setMultiOrders([]);
+        setCurrentMultiIndex(null);
+
         const formData = new FormData();
         formData.append('pdf', file);
 
@@ -100,40 +113,65 @@ export default function NovoPedido() {
             });
 
             const data = response.data;
-            const newWarnings: string[] = [];
 
-            const verifyTrust = (field: any, name: string) => {
-                if (field?.confianca === 'baixa') {
-                    newWarnings.push(`Por favor verifique o campo: ${name}`);
-                }
-                return field?.value || '';
-            };
+            if (data.isMulti) {
+                const mappedOrders = data.pedidos.map((p: any) => ({
+                    numero_pedido: p.numeroPedido.value,
+                    data_emissao: formatDateForInput(p.dataPedido.value) || new Date().toISOString().split('T')[0],
+                    hora_emissao: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                    nome_cliente: p.nomeCliente.value,
+                    telefone_cliente: p.telefoneCliente.value,
+                    estado: 'PR',
+                    cidade: 'Curitiba',
+                    bairro: p.endereco?.bairro || '',
+                    logradouro: p.endereco?.logradouro || '',
+                    numero_end: p.endereco?.numero || '',
+                    observacao_endereco: p.endereco?.observacao || '',
+                    data_entrega_programada: '',
+                    hora_entrega_programada: '',
+                    total_liquido: p.totalLiquido.value,
+                    forma_pagamento: p.formaPagamento.value,
+                    itens: p.itens || [],
+                }));
+                setMultiOrders(mappedOrders);
+                setCurrentMultiIndex(0);
+                alert(`Identificados ${mappedOrders.length} pedidos na lista.`);
+            } else {
+                const newWarnings: string[] = [];
 
-            const dataImportada = verifyTrust(data.dataPedido, 'Data do Pedido');
-            let dataSplit = dataImportada.split(' ');
+                const verifyTrust = (field: any, name: string) => {
+                    if (field?.confianca === 'baixa') {
+                        newWarnings.push(`Por favor verifique o campo: ${name}`);
+                    }
+                    return field?.value || '';
+                };
 
-            const dataExtraida = formatDateForInput(dataSplit[0]);
-            const horaExtraida = dataSplit[1] || '';
+                const dataImportada = verifyTrust(data.dataPedido, 'Data do Pedido');
+                let dataSplit = dataImportada.split(' ');
 
-            setForm({
-                ...form,
-                numero_pedido: verifyTrust(data.numeroPedido, 'Número do Pedido'),
-                data_emissao: dataExtraida || new Date().toISOString().split('T')[0],
-                hora_emissao: horaExtraida || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                nome_cliente: verifyTrust(data.nomeCliente, 'Nome do Cliente'),
-                telefone_cliente: verifyTrust(data.telefoneCliente, 'Telefone do Cliente'),
-                total_liquido: verifyTrust(data.totalLiquido, 'Total Líquido'),
-                forma_pagamento: verifyTrust(data.formaPagamento, 'Forma de Pagamento'),
-                logradouro: data.endereco?.logradouro || '',
-                numero_end: data.endereco?.numero || '',
-                bairro: data.endereco?.bairro || '',
-                observacao_endereco: data.endereco?.observacao || '',
-                data_entrega_programada: formatDateForInput(data.dataEntregaProgramada?.value) || '',
-                hora_entrega_programada: data.horaEntregaProgramada?.value || '',
-                itens: data.itens || [],
-            });
+                const dataExtraida = formatDateForInput(dataSplit[0]);
+                const horaExtraida = dataSplit[1] || '';
 
-            setWarnings(newWarnings);
+                setForm({
+                    ...form,
+                    numero_pedido: verifyTrust(data.numeroPedido, 'Número do Pedido'),
+                    data_emissao: dataExtraida || new Date().toISOString().split('T')[0],
+                    hora_emissao: horaExtraida || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                    nome_cliente: verifyTrust(data.nomeCliente, 'Nome do Cliente'),
+                    telefone_cliente: verifyTrust(data.telefoneCliente, 'Telefone do Cliente'),
+                    total_liquido: verifyTrust(data.totalLiquido, 'Total Líquido'),
+                    forma_pagamento: verifyTrust(data.formaPagamento, 'Forma de Pagamento'),
+                    logradouro: data.endereco?.logradouro || '',
+                    numero_end: data.endereco?.numero || '',
+                    bairro: data.endereco?.bairro || '',
+                    observacao_endereco: data.endereco?.observacao || '',
+                    data_entrega_programada: formatDateForInput(data.dataEntregaProgramada?.value) || '',
+                    hora_entrega_programada: data.horaEntregaProgramada?.value || '',
+                    itens: data.itens || [],
+                });
+
+                setWarnings(newWarnings);
+            }
         } catch (error) {
             console.error(error);
             alert('Erro ao importar PDF.');
@@ -146,36 +184,52 @@ export default function NovoPedido() {
         e.preventDefault();
         setLoading(true);
         try {
-            const formNormalizado: any = { ...form };
+            const ordersToSave = multiOrders.length > 0 ? multiOrders : [form];
 
-            if (typeof formNormalizado.total_liquido === 'string') {
-                formNormalizado.total_liquido = formNormalizado.total_liquido.replace(',', '.').replace(/[^\d.]/g, '');
+            for (const orderData of ordersToSave) {
+                const formNormalizado: any = { ...orderData };
+
+                if (typeof formNormalizado.total_liquido === 'string') {
+                    formNormalizado.total_liquido = formNormalizado.total_liquido.replace(',', '.').replace(/[^\d.]/g, '');
+                }
+
+                // Normalizar data_emissao para data_pedido (ISO)
+                if (orderData.data_emissao) {
+                    formNormalizado.data_pedido = `${orderData.data_emissao}T${orderData.hora_emissao || '00:00'}:00.000Z`;
+                } else {
+                    formNormalizado.data_pedido = new Date().toISOString();
+                }
+
+                // Calcular total_itens
+                formNormalizado.total_itens = orderData.itens.reduce((acc: number, item: any) => acc + (item.quantidade || 0), 0);
+
+                delete formNormalizado.data_emissao;
+                delete formNormalizado.hora_emissao;
+
+                if (formNormalizado.data_entrega_programada === '') delete (formNormalizado as any).data_entrega_programada;
+                if (formNormalizado.hora_entrega_programada === '') delete (formNormalizado as any).hora_entrega_programada;
+
+                await api.post('/pedidos', formNormalizado);
             }
 
-            // Normalizar data_emissao para data_pedido (ISO)
-            if (form.data_emissao) {
-                formNormalizado.data_pedido = `${form.data_emissao}T${form.hora_emissao || '00:00'}:00.000Z`;
-            } else {
-                formNormalizado.data_pedido = new Date().toISOString();
-            }
-
-            // Calcular total_itens
-            formNormalizado.total_itens = form.itens.reduce((acc, item) => acc + (item.quantidade || 0), 0);
-
-            delete formNormalizado.data_emissao;
-            delete formNormalizado.hora_emissao;
-
-            if (formNormalizado.data_entrega_programada === '') delete (formNormalizado as any).data_entrega_programada;
-            if (formNormalizado.hora_entrega_programada === '') delete (formNormalizado as any).hora_entrega_programada;
-
-            await api.post('/pedidos', formNormalizado);
-            alert('Pedido criado com sucesso!');
+            alert(multiOrders.length > 0 ? `${multiOrders.length} pedidos criados com sucesso!` : 'Pedido criado com sucesso!');
             router.push('/pedidos');
         } catch (error) {
             console.error(error);
             alert('Erro ao criar pedido.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const currentForm = currentMultiIndex !== null ? multiOrders[currentMultiIndex] : form;
+    const updateFormField = (field: keyof FormState, value: any) => {
+        if (currentMultiIndex !== null) {
+            const newMulti = [...multiOrders];
+            newMulti[currentMultiIndex] = { ...newMulti[currentMultiIndex], [field]: value };
+            setMultiOrders(newMulti);
+        } else {
+            setForm({ ...form, [field]: value });
         }
     };
 
@@ -214,6 +268,32 @@ export default function NovoPedido() {
                 </div>
             </div>
 
+            {multiOrders.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <span className="font-bold text-blue-900">Modo Lote de Pedidos:</span>
+                        <div className="flex gap-1">
+                            {multiOrders.map((_item: FormState, idx: number) => (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setCurrentMultiIndex(idx)}
+                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${currentMultiIndex === idx
+                                        ? 'bg-blue-700 text-white'
+                                        : 'bg-white text-blue-700 border border-blue-300 hover:bg-blue-100'
+                                        }`}
+                                >
+                                    {idx + 1}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="text-sm text-blue-700">
+                        Editando pedido {currentMultiIndex !== null ? currentMultiIndex + 1 : 0} de {multiOrders.length}
+                    </div>
+                </div>
+            )}
+
             {warnings.length > 0 && (
                 <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg flex items-start gap-3">
                     <AlertCircle className="text-yellow-600 shrink-0 mt-0.5" size={20} />
@@ -234,8 +314,8 @@ export default function NovoPedido() {
                         <label className="block text-gray-700 font-medium mb-1">Nº do Pedido</label>
                         <input
                             required
-                            value={form.numero_pedido}
-                            onChange={e => setForm({ ...form, numero_pedido: e.target.value })}
+                            value={currentForm.numero_pedido}
+                            onChange={e => updateFormField('numero_pedido', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
@@ -245,8 +325,8 @@ export default function NovoPedido() {
                             <input
                                 type="date"
                                 required
-                                value={form.data_emissao}
-                                onChange={e => setForm({ ...form, data_emissao: e.target.value })}
+                                value={currentForm.data_emissao}
+                                onChange={e => updateFormField('data_emissao', e.target.value)}
                                 className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                             />
                         </div>
@@ -255,8 +335,8 @@ export default function NovoPedido() {
                             <input
                                 type="time"
                                 required
-                                value={form.hora_emissao}
-                                onChange={e => setForm({ ...form, hora_emissao: e.target.value })}
+                                value={currentForm.hora_emissao}
+                                onChange={e => updateFormField('hora_emissao', e.target.value)}
                                 className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                             />
                         </div>
@@ -265,16 +345,16 @@ export default function NovoPedido() {
                         <label className="block text-gray-700 font-medium mb-1">Cliente</label>
                         <input
                             required
-                            value={form.nome_cliente}
-                            onChange={e => setForm({ ...form, nome_cliente: e.target.value })}
+                            value={currentForm.nome_cliente}
+                            onChange={e => updateFormField('nome_cliente', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
                     <div>
                         <label className="block text-gray-700 font-medium mb-1">Telefone</label>
                         <input
-                            value={form.telefone_cliente}
-                            onChange={e => setForm({ ...form, telefone_cliente: e.target.value })}
+                            value={currentForm.telefone_cliente}
+                            onChange={e => updateFormField('telefone_cliente', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
@@ -283,8 +363,8 @@ export default function NovoPedido() {
                             <label className="block text-gray-700 font-medium mb-1 text-blue-700">Data Programada</label>
                             <input
                                 type="date"
-                                value={form.data_entrega_programada}
-                                onChange={e => setForm({ ...form, data_entrega_programada: e.target.value })}
+                                value={currentForm.data_entrega_programada}
+                                onChange={e => updateFormField('data_entrega_programada', e.target.value)}
                                 className="w-full border border-blue-200 bg-blue-50 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                             />
                         </div>
@@ -292,8 +372,8 @@ export default function NovoPedido() {
                             <label className="block text-gray-700 font-medium mb-1 text-blue-700">Hora Programada</label>
                             <input
                                 type="time"
-                                value={form.hora_entrega_programada}
-                                onChange={e => setForm({ ...form, hora_entrega_programada: e.target.value })}
+                                value={currentForm.hora_entrega_programada}
+                                onChange={e => updateFormField('hora_entrega_programada', e.target.value)}
                                 className="w-full border border-blue-200 bg-blue-50 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                             />
                         </div>
@@ -307,8 +387,8 @@ export default function NovoPedido() {
                         <label className="block text-gray-700 font-medium mb-1">Logradouro</label>
                         <input
                             required
-                            value={form.logradouro}
-                            onChange={e => setForm({ ...form, logradouro: e.target.value })}
+                            value={currentForm.logradouro}
+                            onChange={e => updateFormField('logradouro', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
@@ -316,8 +396,8 @@ export default function NovoPedido() {
                         <label className="block text-gray-700 font-medium mb-1">Número</label>
                         <input
                             required
-                            value={form.numero_end}
-                            onChange={e => setForm({ ...form, numero_end: e.target.value })}
+                            value={currentForm.numero_end}
+                            onChange={e => updateFormField('numero_end', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
@@ -325,16 +405,16 @@ export default function NovoPedido() {
                         <label className="block text-gray-700 font-medium mb-1">Bairro</label>
                         <input
                             required
-                            value={form.bairro}
-                            onChange={e => setForm({ ...form, bairro: e.target.value })}
+                            value={currentForm.bairro}
+                            onChange={e => updateFormField('bairro', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
                     <div className="sm:col-span-3">
                         <label className="block text-gray-700 font-medium mb-1 text-orange-700 font-bold">Avisos / Observação do Endereço (Ponto de Refêrencia)</label>
                         <textarea
-                            value={form.observacao_endereco}
-                            onChange={e => setForm({ ...form, observacao_endereco: e.target.value })}
+                            value={currentForm.observacao_endereco}
+                            onChange={e => updateFormField('observacao_endereco', e.target.value)}
                             placeholder="Tipo: Portão verde, Perto da praça, etc."
                             className="w-full border border-orange-200 bg-orange-50 rounded-lg p-2.5 focus:ring-2 focus:ring-orange-600 outline-none h-20"
                         />
@@ -353,8 +433,8 @@ export default function NovoPedido() {
                             </tr>
                         </thead>
                         <tbody className="divide-y">
-                            {form.itens.length > 0 ? (
-                                form.itens.map((item, i) => (
+                            {currentForm.itens.length > 0 ? (
+                                currentForm.itens.map((item, i) => (
                                     <tr key={i} className="hover:bg-gray-50">
                                         <td className="px-4 py-3 font-medium">{item.idx || i + 1}</td>
                                         <td className="px-4 py-3">
@@ -399,16 +479,16 @@ export default function NovoPedido() {
                     <div>
                         <label className="block text-gray-700 font-medium mb-1">Total Líquido</label>
                         <input
-                            value={form.total_liquido}
-                            onChange={e => setForm({ ...form, total_liquido: e.target.value })}
+                            value={currentForm.total_liquido}
+                            onChange={e => updateFormField('total_liquido', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
                     <div>
                         <label className="block text-gray-700 font-medium mb-1">Forma de Pagamento</label>
                         <input
-                            value={form.forma_pagamento}
-                            onChange={e => setForm({ ...form, forma_pagamento: e.target.value })}
+                            value={currentForm.forma_pagamento}
+                            onChange={e => updateFormField('forma_pagamento', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
@@ -428,7 +508,7 @@ export default function NovoPedido() {
                         className="bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 hover:bg-blue-800 disabled:opacity-50"
                     >
                         <Save size={18} />
-                        {loading ? 'Salvando...' : 'Salvar Pedido'}
+                        {loading ? 'Salvando...' : multiOrders.length > 0 ? 'Salvar Todos os Pedidos' : 'Salvar Pedido'}
                     </button>
                 </div>
             </form>
