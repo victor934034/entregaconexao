@@ -10,9 +10,13 @@ import com.example.appdenetregasconexao2772.model.Pedido
 import com.example.appdenetregasconexao2772.model.UpdateStatusRequest
 import com.example.appdenetregasconexao2772.network.RetrofitClient
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 
 class PedidosViewModel(application: Application) : AndroidViewModel(application) {
     private val apiService = RetrofitClient.create(application)
+    private var pollingJob: Job? = null
 
     private val _sessionExpired = MutableLiveData<Boolean>()
     val sessionExpired: LiveData<Boolean> = _sessionExpired
@@ -29,7 +33,10 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                     _error.value = "Falha ao buscar detalhes"
                 }
             } catch (e: Exception) {
-                _error.value = "Erro de rede: ${e.message}"
+                if (e is CancellationException) throw e
+                if (e !is java.net.UnknownHostException) {
+                    _error.value = "Erro de rede: ${e.message}"
+                }
             }
         }
     }
@@ -62,7 +69,10 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                     _error.value = "Falha ao carregar pedidos: ${response.code()}"
                 }
             } catch (e: Exception) {
-                _error.value = "Erro de rede: ${e.message}"
+                if (e is CancellationException) throw e
+                if (e !is java.net.UnknownHostException || _pedidos.value.isNullOrEmpty()) {
+                    _error.value = "Erro de rede: ${e.message}"
+                }
             }
         }
     }
@@ -88,7 +98,10 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                     _error.value = "Falha ao carregar pedidos da data"
                 }
             } catch (e: Exception) {
-                _error.value = "Erro de rede: ${e.message}"
+                if (e is CancellationException) throw e
+                if (e !is java.net.UnknownHostException) {
+                    _error.value = "Erro de rede: ${e.message}"
+                }
             }
         }
     }
@@ -109,7 +122,8 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                     _error.value = "Falha ao atualizar status"
                 }
             } catch (e: Exception) {
-                _error.value = "Erro de rede: ${e.message}"
+                if (e is CancellationException) throw e
+                _error.value = "Erro ao atualizar: ${e.message}"
             }
         }
     }
@@ -132,4 +146,38 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: Exception) {}
         }
     }
+
+    fun startPolling() {
+        val prefs = getApplication<Application>().getSharedPreferences("conexao_prefs", Context.MODE_PRIVATE)
+        val uid = prefs.getInt("uid", -1)
+        if (uid == -1) return
+
+        pollingJob?.cancel()
+        pollingJob = viewModelScope.launch {
+            while(kotlinx.coroutines.isActive) {
+                try {
+                    val response = apiService.getPedidosEntregador(uid)
+                    if (response.isSuccessful) {
+                        val lista = response.body() ?: emptyList()
+                        _pedidos.value = lista
+                        val entregues = lista.filter { it.status == "ENTREGUE" || it.status == "CONCLUIDO" }
+                        _totalEntregas.value = entregues.size
+                        _totalGanhos.value = entregues.sumOf { it.total_liquido ?: 0.0 }
+                    } else if (response.code() == 401) {
+                        handleUnauthorized()
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    // Ignora erros de rede durante o polling para não spammar toasts
+                }
+                delay(10000) // 10 segundos
+            }
+        }
+    }
+
+    fun stopPolling() {
+        pollingJob?.cancel()
+        pollingJob = null
+    }
+}
 }

@@ -155,6 +155,31 @@ exports.statsUsuario = async (req, res) => {
     }
 };
 
+exports.excluirUsuario = async (req, res) => {
+    try {
+        const usuario = await Usuario.findByPk(req.params.id);
+        if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado.' });
+
+        if (usuario.perfil === 'SUPER_ADM') {
+            return res.status(403).json({ error: 'Não é possível excluir um Super Administrador.' });
+        }
+
+        const pedidosPendentes = await Pedido.count({
+            where: { entregador_id: usuario.id, status: ['PENDENTE', 'EM_ROTA', 'RETIRADO'] }
+        });
+
+        if (pedidosPendentes > 0) {
+            return res.status(400).json({ error: 'Usuário possui pedidos em andamento. Impossível excluir.' });
+        }
+
+        await usuario.destroy();
+        return res.json({ message: 'Usuário excluído com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao excluir usuário:', error);
+        res.status(500).json({ error: 'Erro ao excluir usuário.' });
+    }
+};
+
 exports.desativarPropriaConta = async (req, res) => {
     try {
         const usuario = await Usuario.findByPk(req.usuario.id);

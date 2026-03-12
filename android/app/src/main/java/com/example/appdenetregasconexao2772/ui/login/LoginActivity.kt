@@ -66,7 +66,7 @@ class LoginActivity : AppCompatActivity() {
         }
 
         btnLogin.setOnClickListener {
-            val email = etEmail.text.toString()
+            val email = etEmail.text.toString().trim()
             val senha = etSenha.text.toString()
 
             if (email.isEmpty() || senha.isEmpty()) {

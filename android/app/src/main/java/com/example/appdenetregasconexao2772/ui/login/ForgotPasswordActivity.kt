@@ -30,7 +30,7 @@ class ForgotPasswordActivity : AppCompatActivity() {
         }
 
         btnReset.setOnClickListener {
-            val email = etEmail.text.toString()
+            val email = etEmail.text.toString().trim()
 
             if (email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                 Toast.makeText(this, "Informe um e-mail válido", Toast.LENGTH_SHORT).show()

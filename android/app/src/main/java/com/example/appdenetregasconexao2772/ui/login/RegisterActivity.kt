@@ -47,7 +47,7 @@ class RegisterActivity : AppCompatActivity() {
 
         btnCadastrar.setOnClickListener {
             val nome = etNome.text.toString()
-            val email = etEmail.text.toString()
+            val email = etEmail.text.toString().trim()
             val senha = etSenha.text.toString()
             val confirmar = etConfirmarSenha.text.toString()
 

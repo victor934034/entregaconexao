@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
-import { Shield, UserPlus, CheckCircle, XCircle } from 'lucide-react';
+import { Shield, UserPlus, CheckCircle, XCircle, Trash2, Power } from 'lucide-react';
 
 export default function Usuarios() {
     const { usuario } = useAuth();
@@ -25,6 +25,26 @@ export default function Usuarios() {
     useEffect(() => {
         carregarUsuarios();
     }, []);
+
+    const alternarStatus = async (id: number, statusAtual: boolean) => {
+        if (!window.confirm(`Deseja ${statusAtual ? 'desativar' : 'ativar'} este usuário?`)) return;
+        try {
+            await api.patch(`/usuarios/${id}/status`, { ativo: !statusAtual });
+            carregarUsuarios();
+        } catch (error: any) {
+            alert(error.response?.data?.error || 'Erro ao alterar status');
+        }
+    };
+
+    const excluirUsuario = async (id: number) => {
+        if (!window.confirm('Tem certeza que deseja EXCLUIR este usuário? Esta ação não pode ser desfeita.')) return;
+        try {
+            await api.delete(`/usuarios/${id}`);
+            carregarUsuarios();
+        } catch (error: any) {
+            alert(error.response?.data?.error || 'Erro ao excluir usuário');
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -53,6 +73,7 @@ export default function Usuarios() {
                                 <th className="py-3 px-4">Perfil</th>
                                 <th className="py-3 px-4 text-center">Status</th>
                                 <th className="py-3 px-4 text-center">Permissões</th>
+                                <th className="py-3 px-4 text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -73,15 +94,31 @@ export default function Usuarios() {
                                         )}
                                     </td>
                                     <td className="py-3 px-4 text-center">
-                                        <button className="text-blue-600 hover:text-blue-800 p-1">
+                                        <button className="text-blue-600 hover:text-blue-800 p-1" title="Permissões">
                                             <Shield size={18} />
+                                        </button>
+                                    </td>
+                                    <td className="py-3 px-4 text-center flex justify-center gap-2">
+                                        <button
+                                            onClick={() => alternarStatus(u.id, u.ativo)}
+                                            className={`${u.ativo ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800'} p-1`}
+                                            title={u.ativo ? 'Desativar' : 'Ativar'}
+                                        >
+                                            <Power size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => excluirUsuario(u.id)}
+                                            className="text-red-500 hover:text-red-700 p-1"
+                                            title="Excluir"
+                                        >
+                                            <Trash2 size={18} />
                                         </button>
                                     </td>
                                 </tr>
                             ))}
                             {usuariosList.length === 0 && !loading && (
                                 <tr>
-                                    <td colSpan={5} className="text-center py-8 text-gray-500">
+                                    <td colSpan={6} className="text-center py-8 text-gray-500">
                                         Nenhum usuário cadastrado.
                                     </td>
                                 </tr>

@@ -16,6 +16,7 @@ router.delete('/me/excluir', usuarioController.excluirPropriaConta);
 // Apenas SUPER_ADM e ADM com permissão podem gerenciar usuários
 router.use(permissionMiddleware('gerenciar_usuarios'));
 
+router.delete('/:id', usuarioController.excluirUsuario);
 router.get('/', usuarioController.listarUsuarios);
 router.post('/', usuarioController.criarUsuario);
 router.get('/:id', usuarioController.detalhesUsuario);

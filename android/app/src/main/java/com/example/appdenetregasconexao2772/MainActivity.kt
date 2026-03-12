@@ -12,9 +12,13 @@ import com.example.appdenetregasconexao2772.ui.pedidos.CalendarioFragment
 import com.example.appdenetregasconexao2772.ui.pedidos.HomeFragment
 import com.example.appdenetregasconexao2772.ui.pedidos.PerfilFragment
 
+import androidx.lifecycle.ViewModelProvider
+import com.example.appdenetregasconexao2772.ui.pedidos.PedidosViewModel
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var viewModel: PedidosViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         // Conecta ao Socket.io para atualizações em tempo real
         com.example.appdenetregasconexao2772.network.SocketManager.connect()
 
-        val viewModel = androidx.lifecycle.ViewModelProvider(this)[com.example.appdenetregasconexao2772.ui.pedidos.PedidosViewModel::class.java]
+        viewModel = ViewModelProvider(this)[PedidosViewModel::class.java]
         viewModel.sessionExpired.observe(this) { expired ->
             if (expired) {
                 startActivity(Intent(this, com.example.appdenetregasconexao2772.ui.login.LoginActivity::class.java))
@@ -60,5 +64,20 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.nav_host_fragment, fragment)
             .commit()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::viewModel.isInitialized) {
+            viewModel.startPolling()
+            viewModel.carregarEstatisticas()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (::viewModel.isInitialized) {
+            viewModel.stopPolling()
+        }
     }
 }
