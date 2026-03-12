@@ -24,6 +24,7 @@ interface FormState {
     logradouro: string;
     numero_end: string;
     observacao_endereco: string;
+    email_cliente: string;
     data_entrega_programada: string;
     hora_entrega_programada: string;
     total_liquido: string;
@@ -49,6 +50,7 @@ export default function NovoPedido() {
         logradouro: '',
         numero_end: '',
         observacao_endereco: '',
+        email_cliente: '',
         data_entrega_programada: '',
         hora_entrega_programada: '',
         total_liquido: '',
@@ -128,6 +130,7 @@ export default function NovoPedido() {
                     logradouro: p.endereco?.logradouro || '',
                     numero_end: p.endereco?.numero || '',
                     observacao_endereco: p.endereco?.observacao || '',
+                    email_cliente: p.emailCliente?.value || '',
                     data_entrega_programada: '',
                     hora_entrega_programada: '',
                     total_liquido: p.totalLiquido.value,
@@ -166,6 +169,7 @@ export default function NovoPedido() {
                     numero_end: data.endereco?.numero || '',
                     bairro: data.endereco?.bairro || '',
                     observacao_endereco: data.endereco?.observacao || '',
+                    email_cliente: data.emailCliente?.value || '',
                     data_entrega_programada: formatDateForInput(data.dataEntregaProgramada?.value) || '',
                     hora_entrega_programada: data.horaEntregaProgramada?.value || '',
                     itens: data.itens || [],
@@ -524,6 +528,16 @@ export default function NovoPedido() {
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
                         />
                     </div>
+                    <div>
+                        <label className="block text-gray-700 font-medium mb-1">E-mail do Cliente</label>
+                        <input
+                            type="email"
+                            value={currentForm.email_cliente}
+                            onChange={(e) => updateFormField('email_cliente', e.target.value)}
+                            className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
+                            placeholder="exemplo@email.com"
+                        />
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                         <div>
                             <label className="block text-gray-700 font-medium mb-1 text-blue-700">Data Programada</label>
@@ -550,12 +564,13 @@ export default function NovoPedido() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                     <div className="sm:col-span-2">
-                        <label className="block text-gray-700 font-medium mb-1">Logradouro</label>
+                        <label className="block text-gray-700 font-medium mb-1">Endereço</label>
                         <input
                             required
                             value={currentForm.logradouro}
                             onChange={e => updateFormField('logradouro', e.target.value)}
                             className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
+                            placeholder="Ex: Rua das Flores"
                         />
                     </div>
                     <div>

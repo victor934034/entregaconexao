@@ -9,7 +9,8 @@ const PATTERNS = {
     nomeCliente: /Nome:\s*(?:\d+[-]\s*)?([^/\n\r\d(]+?)(?:\s+-\s+|\s*[/]|Fone:|$)/i,
     formaPagamento: /Forma Pg\n(?:.*\n){3}([A-ZÀ-Ú\s]+)\n/i,
     vencimento: /\(\d\)(\d{2}\/\d{2}\/\d{2})/i,
-    telefone: /(?:Fone|Celular):\s*([\d\s()-]+?)(?=\s*(?:E-mail|CPF|CNPJ|Endere|CEP|Inscrição|\n|$))/i
+    telefone: /(?:Fone|Celular):\s*([\d\s()-]+?)(?=\s*(?:E-mail|CPF|CNPJ|Endere|CEP|Inscrição|\n|$))/i,
+    email: /(?:E-mail|Email):\s*([\w.-]+@[\w.-]+\.[a-zA-Z]{2,})/i
 };
 
 function extractField(text, regex, defaultValue = '') {
@@ -186,6 +187,7 @@ async function parsePedidoPdf(filePath) {
             horaEntregaProgramada: extractField(text, PATTERNS.horaEntrega, ''),
             nomeCliente: extractField(text, PATTERNS.nomeCliente, 'Cliente não identificado'),
             telefoneCliente: extractTelefoneCliente(text),
+            emailCliente: extractField(text, PATTERNS.email, ''),
             totalLiquido: extractTotalLiquido(text),
             formaPagamento: extractField(text, PATTERNS.formaPagamento, ''),
             vencimento: extractField(text, PATTERNS.vencimento, ''),
@@ -264,7 +266,8 @@ async function parseListaEntrega(text) {
         const dataMatch = dataLine.match(/(\d{2}\/\d{2}\/\d{4})/);
         const data_pedido = dataMatch ? dataMatch[1] : '';
 
-        const valorMatch = dataLine.match(/(\d+,\d{2})$/);
+        // Valor agora suporta separador de milhar (.) e espaços no final
+        const valorMatch = dataLine.match(/([\d.]*,\d{2})\s*$/);
         const total_liquido = valorMatch ? valorMatch[1] : '0,00';
 
         // Forma de pagamento fica entre a data e o valor
@@ -308,6 +311,7 @@ async function parseListaEntrega(text) {
             dataPedido: { value: data_pedido, confianca: 'alta' },
             nomeCliente: { value: nome_cliente, confianca: 'alta' },
             telefoneCliente: { value: telefone_cliente, confianca: 'alta' },
+            emailCliente: { value: '', confianca: 'baixa' }, // Email raramente está na lista
             totalLiquido: { value: total_liquido, confianca: 'alta' },
             formaPagamento: { value: forma_pagamento, confianca: 'alta' },
             endereco: endereco,
