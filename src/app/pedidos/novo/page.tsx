@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { Upload, Save, AlertCircle } from 'lucide-react';
+import { Upload, Save, AlertCircle, FileText, Layers, ChevronRight } from 'lucide-react';
 
 interface ItemPedido {
     idx?: number;
@@ -35,6 +35,7 @@ export default function NovoPedido() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [file, setFile] = useState<File | null>(null);
+    const [importMode, setImportMode] = useState<'single' | 'multi' | null>(null);
 
     const [form, setForm] = useState<FormState>({
         numero_pedido: '',
@@ -135,7 +136,7 @@ export default function NovoPedido() {
                 }));
                 setMultiOrders(mappedOrders);
                 setCurrentMultiIndex(0);
-                alert(`Identificados ${mappedOrders.length} pedidos na lista.`);
+                // No need for alert if we have the new UI indicator
             } else {
                 const newWarnings: string[] = [];
 
@@ -235,38 +236,203 @@ export default function NovoPedido() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold text-gray-900">Novo Pedido</h2>
-                <p className="text-gray-500">Cadastre um pedido manual ou importe via PDF na área azul.</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Novo Pedido</h2>
+                    <p className="text-gray-500 mt-1 text-lg">Escolha uma forma de entrada para começar.</p>
+                </div>
+                {multiOrders.length > 0 && (
+                    <div className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 animate-pulse shadow-lg">
+                        <Layers size={16} />
+                        MODO LOTE ATIVO ({multiOrders.length})
+                    </div>
+                )}
             </div>
 
-            <div className="bg-blue-50 border-2 border-dashed border-blue-400 rounded-xl p-6 text-center">
-                <Upload className="mx-auto h-12 w-12 text-blue-500 mb-4" />
-                <h3 className="text-lg font-medium text-blue-900 mb-2">Importar PDF do Sistema Principal</h3>
-                <p className="text-sm text-blue-700 mb-4">O formulário será preenchido automaticamente ao enviar.</p>
-
-                <div className="flex justify-center gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Opção 1: Pedido Único */}
+                <div
+                    onClick={() => document.getElementById('file-single')?.click()}
+                    className={`relative group cursor-pointer overflow-hidden rounded-2xl border-2 transition-all duration-300 ${importMode === 'single' ? 'border-blue-600 bg-blue-50 shadow-lg scale-[1.02]' : 'border-gray-100 bg-white hover:border-blue-300 hover:shadow-md'
+                        }`}
+                >
+                    <div className="p-6">
+                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors ${importMode === 'single' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 group-hover:bg-blue-100'
+                            }`}>
+                            <FileText size={28} />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Pedido Único</h3>
+                        <p className="text-gray-600 text-sm leading-relaxed">
+                            Importe um PDF de nota fiscal ou pedido padrão. O sistema preencherá os detalhes automaticamente.
+                        </p>
+                        <div className="mt-4 flex items-center text-blue-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                            Selecionar Arquivo <ChevronRight size={16} />
+                        </div>
+                    </div>
                     <input
+                        id="file-single"
                         type="file"
                         accept="application/pdf"
-                        onChange={handleFileChange}
-                        className="block w-full max-w-xs text-sm text-gray-500
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-full file:border-0
-              file:text-sm file:font-semibold
-              file:bg-blue-100 file:text-blue-700
-              hover:file:bg-blue-200"
+                        className="hidden"
+                        onChange={async (e) => {
+                            const selectedFile = e.target.files?.[0];
+                            if (selectedFile) {
+                                setFile(selectedFile);
+                                setImportMode('single');
+                                // We'll trigger handleImportPDF indirectly or after state update
+                                // For better UX, we call it manually here since state update is async
+                                await (async () => {
+                                    setLoading(true);
+                                    setWarnings([]);
+                                    setMultiOrders([]);
+                                    setCurrentMultiIndex(null);
+                                    const formData = new FormData();
+                                    formData.append('pdf', selectedFile);
+                                    try {
+                                        const resp = await api.post('/pedidos/importar-pdf', formData, {
+                                            headers: { 'Content-Type': 'multipart/form-data' }
+                                        });
+                                        const data = resp.data;
+                                        if (data.isMulti) {
+                                            // Fallback if user clicked single for a multi file
+                                            const mapped = data.pedidos.map((p: any) => ({
+                                                numero_pedido: p.numeroPedido.value,
+                                                data_emissao: formatDateForInput(p.dataPedido.value) || new Date().toISOString().split('T')[0],
+                                                hora_emissao: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                                                nome_cliente: p.nomeCliente.value,
+                                                telefone_cliente: p.telefoneCliente.value,
+                                                estado: 'PR',
+                                                cidade: 'Curitiba',
+                                                bairro: p.endereco?.bairro || '',
+                                                logradouro: p.endereco?.logradouro || '',
+                                                numero_end: p.endereco?.numero || '',
+                                                observacao_endereco: p.endereco?.observacao || '',
+                                                data_entrega_programada: '',
+                                                hora_entrega_programada: '',
+                                                total_liquido: p.totalLiquido.value,
+                                                forma_pagamento: p.formaPagamento.value,
+                                                itens: p.itens || [],
+                                            }));
+                                            setMultiOrders(mapped);
+                                            setCurrentMultiIndex(0);
+                                        } else {
+                                            const dataPedido = data.dataPedido?.value ? formatDateForInput(data.dataPedido.value) : new Date().toISOString().split('T')[0];
+                                            setForm(prev => ({
+                                                ...prev,
+                                                numero_pedido: data.numeroPedido?.value || '',
+                                                data_emissao: dataPedido,
+                                                nome_cliente: data.nomeCliente?.value || '',
+                                                telefone_cliente: data.telefoneCliente?.value || '',
+                                                total_liquido: data.totalLiquido?.value || '',
+                                                forma_pagamento: data.formaPagamento?.value || '',
+                                                itens: data.itens || []
+                                            }));
+                                        }
+                                    } catch (err) {
+                                        alert('Erro ao processar PDF');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                })();
+                            }
+                        }}
                     />
-                    <button
-                        type="button"
-                        onClick={handleImportPDF}
-                        disabled={loading || !file}
-                        className="bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-sm hover:bg-blue-800 disabled:opacity-50"
-                    >
-                        {loading ? 'Processando...' : 'Extrair Dados'}
-                    </button>
+                </div>
+
+                {/* Opção 2: Multi Pedidos */}
+                <div
+                    onClick={() => document.getElementById('file-multi')?.click()}
+                    className={`relative group cursor-pointer overflow-hidden rounded-2xl border-2 transition-all duration-300 ${importMode === 'multi' ? 'border-purple-600 bg-purple-50 shadow-lg scale-[1.02]' : 'border-gray-100 bg-white hover:border-purple-300 hover:shadow-md'
+                        }`}
+                >
+                    <div className="p-6">
+                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors ${importMode === 'multi' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-600 group-hover:bg-purple-100'
+                            }`}>
+                            <Layers size={28} />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Lista de Pedidos (Lote)</h3>
+                        <p className="text-gray-600 text-sm leading-relaxed">
+                            Importe o Borderô ou Lista de Entrega. Ideal para cadastrar vários clientes de uma só vez.
+                        </p>
+                        <div className="mt-4 flex items-center text-purple-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                            Selecionar Lista <ChevronRight size={16} />
+                        </div>
+                    </div>
+                    <input
+                        id="file-multi"
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        onChange={async (e) => {
+                            const selectedFile = e.target.files?.[0];
+                            if (selectedFile) {
+                                setFile(selectedFile);
+                                setImportMode('multi');
+                                await (async () => {
+                                    setLoading(true);
+                                    setWarnings([]);
+                                    setMultiOrders([]);
+                                    setCurrentMultiIndex(null);
+                                    const formData = new FormData();
+                                    formData.append('pdf', selectedFile);
+                                    try {
+                                        const resp = await api.post('/pedidos/importar-pdf', formData, {
+                                            headers: { 'Content-Type': 'multipart/form-data' }
+                                        });
+                                        const data = resp.data;
+                                        if (data.isMulti) {
+                                            const mapped = data.pedidos.map((p: any) => ({
+                                                numero_pedido: p.numeroPedido.value,
+                                                data_emissao: formatDateForInput(p.dataPedido.value) || new Date().toISOString().split('T')[0],
+                                                hora_emissao: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                                                nome_cliente: p.nomeCliente.value,
+                                                telefone_cliente: p.telefoneCliente.value,
+                                                estado: 'PR',
+                                                cidade: 'Curitiba',
+                                                bairro: p.endereco?.bairro || '',
+                                                logradouro: p.endereco?.logradouro || '',
+                                                numero_end: p.endereco?.numero || '',
+                                                observacao_endereco: p.endereco?.observacao || '',
+                                                data_entrega_programada: '',
+                                                hora_entrega_programada: '',
+                                                total_liquido: p.totalLiquido.value,
+                                                forma_pagamento: p.formaPagamento.value,
+                                                itens: p.itens || [],
+                                            }));
+                                            setMultiOrders(mapped);
+                                            setCurrentMultiIndex(0);
+                                        } else {
+                                            alert('Este arquivo não parece ser uma lista de pedidos. Tentando importar como pedido único.');
+                                            const dataPedido = data.dataPedido?.value ? formatDateForInput(data.dataPedido.value) : new Date().toISOString().split('T')[0];
+                                            setForm(prev => ({
+                                                ...prev,
+                                                numero_pedido: data.numeroPedido?.value || '',
+                                                data_emissao: dataPedido,
+                                                nome_cliente: data.nomeCliente?.value || '',
+                                                telefone_cliente: data.telefoneCliente?.value || '',
+                                                total_liquido: data.totalLiquido?.value || '',
+                                                forma_pagamento: data.formaPagamento?.value || '',
+                                                itens: data.itens || []
+                                            }));
+                                        }
+                                    } catch (err) {
+                                        alert('Erro ao processar PDF');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                })();
+                            }
+                        }}
+                    />
                 </div>
             </div>
+
+            {loading && (
+                <div className="flex items-center justify-center py-8 gap-4 text-blue-600 font-semibold bg-white/50 backdrop-blur-sm rounded-2xl border border-blue-100 animate-in fade-in zoom-in duration-300">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    Analisando documentos e extraindo dados...
+                </div>
+            )}
 
             {multiOrders.length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
