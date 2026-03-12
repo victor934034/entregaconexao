@@ -17,7 +17,6 @@ function extractField(text, regex, defaultValue = '') {
     const match = text.match(regex);
     if (match && match[1]) {
         let val = match[1].trim();
-        // Limpeza extra para nome caso ainda venha com prefixos
         if (regex === PATTERNS.nomeCliente) {
             val = val.replace(/^[\d\s-]+/, '').trim();
         }
@@ -45,49 +44,36 @@ function extractItems(text) {
 }
 
 function extractTotalLiquido(text) {
-    // 1. Busca específica após a label Total Liquido R$
     const totalLiquidoPos = text.indexOf('Total Liquido R$');
     if (totalLiquidoPos !== -1) {
         const afterTotal = text.substring(totalLiquidoPos);
-        // Captura padrões de moeda brasileira (vários dígitos + vírgula + 2 dígitos)
         const matches = afterTotal.match(/\d+,\d{2}/g);
         if (matches && matches.length > 0) {
-            // O Total Líquido aparece repetido nos totalizadores e no recebimento. 
-            // O último valor monetário após a label é o Total Líquido final.
             return { value: matches[matches.length - 1], confianca: 'alta' };
         }
     }
-
-    // 2. Fallback agressivo: Pega o último valor monetário do documento
     const allMatches = text.match(/\d+,\d{2}/g);
     if (allMatches && allMatches.length > 0) {
         return { value: allMatches[allMatches.length - 1], confianca: 'alta' };
     }
-
     return { value: '0,00', confianca: 'baixa' };
 }
 
 function extractTelefoneCliente(text) {
-    // 0. Tentar extrair telefone misturado na mesma linha do Nome ou logo abaixo (janela de 300 chars)
     const blockMatch = text.match(/Nome:[\s\S]{1,300}/i);
     if (blockMatch) {
         const block = blockMatch[0];
-        // Busca por padrões de telefone (41) 99999-9999 ou 41 9999-9999
         const foneRegex = /(?:\(?\d{2}\)?\s*)?9?\d{4,5}[-\s]*\d{4}/g;
         const potentialFones = block.match(foneRegex);
-
         if (potentialFones) {
             for (const fone of potentialFones) {
                 const num = fone.replace(/\D/g, '');
-                // Excluir shop phone 995278067
                 if (!num.includes('995278067') && num.length >= 8) {
                     return { value: fone.trim(), confianca: 'alta' };
                 }
             }
         }
     }
-
-    // 1. Tentar pegar Fone: rotulado especificamente em qualquer parte (exceto da loja)
     const matches = [...text.matchAll(/Fone:\s*([\d\s()-]+?)(?=\s*(?:E-mail|CPF|CNPJ|Endere|CEP|Inscrição|\n|$))/gi)];
     for (const m of matches) {
         let t = m[1].trim();
@@ -96,40 +82,34 @@ function extractTelefoneCliente(text) {
             return { value: t, confianca: 'média' };
         }
     }
-
     return { value: '', confianca: 'baixa' };
 }
 
-
 function decomporEndereco(text) {
-    const match = text.match(/Endereço de Entrega:\s*\n([\s\S]+?)(?:\s+-\s+\n|Aprovação|$)/i);
-    if (!match) return { logradouro: '', numero: '', bairro: '', observacao: '', original: '' };
+    if (text.includes('Endereço de Entrega:')) {
+        const match = text.match(/Endereço de Entrega:\s*\n([\s\S]+?)(?:\s+-\s+\n|Aprovação|$)/i);
+        if (!match) return { logradouro: '', numero: '', bairro: '', observacao: '', original: '' };
+        text = match[1].trim();
+    }
 
-    const original = match[1].trim();
-    // Ex: RUA TOSHIAK SAITO (PRÓX GOES), 400 - CASA 2 - UBERABA
-
-    let parts = original.split('-');
+    const original = text;
     let logradouro = '';
     let numero = '';
     let bairro = '';
     let observacao = '';
 
-    // Tenta detectar avisos entre parênteses ou termos comuns
     const avisoRegex = /\(([^)]+)\)|(?:PRÓX|PERTO|AO LADO|EM FRENTE|PORTÃO|CASA DE COR|CASA COR|MURO)\s+[^,-]+/gi;
     let mainText = original;
     const avisosEncontrados = original.match(avisoRegex);
 
     if (avisosEncontrados) {
         observacao = avisosEncontrados.join('; ');
-        // Remove os avisos do texto principal para não sujar o logradouro
         avisosEncontrados.forEach(a => {
             mainText = mainText.replace(a, '');
         });
     }
 
-    // Processa o texto limpo
     const cleanParts = mainText.split('-').map(p => p.trim()).filter(p => p.length > 0);
-
     if (cleanParts.length >= 1) {
         const ruaNum = cleanParts[0].split(',');
         logradouro = ruaNum[0].trim();
@@ -139,7 +119,6 @@ function decomporEndereco(text) {
     }
 
     if (cleanParts.length >= 2) {
-        // Se a parte 2 for um complemento comum que não pegamos na observação
         const p2 = cleanParts[1].toUpperCase();
         if (p2.includes('CASA') || p2.includes('APTO') || p2.includes('LOJA') || p2.includes('BLOCO')) {
             if (!observacao.includes(cleanParts[1])) {
@@ -153,14 +132,12 @@ function decomporEndereco(text) {
         }
     }
 
-    // Se o número ainda estiver vazio e o logradouro tiver vírgula
     if (!numero && logradouro.includes(',')) {
         const spl = logradouro.split(',');
         logradouro = spl[0].trim();
         numero = spl[1].trim();
     }
 
-    // Limpeza final de pontuação residual
     logradouro = logradouro.replace(/[(),]/g, '').trim();
     numero = numero.replace(/[(),]/g, '').trim();
 
@@ -173,7 +150,6 @@ async function parsePedidoPdf(filePath) {
         const data = await pdf(dataBuffer);
         const text = data.text;
 
-        // Detectar se é uma Lista de Entrega e Cobrança
         if (text.includes('L I S T A   DE   E N T R E G A   E   C O B R A N Ç A')) {
             return await parseListaEntrega(text);
         }
@@ -201,11 +177,6 @@ async function parsePedidoPdf(filePath) {
             itens: extractItems(text)
         };
 
-        // Log para depuração em caso de erro residual
-        if (parsedData.totalLiquido.value.length > 15) {
-            console.error('TOTAL LÍQUIDO ANORMAL DETECTADO:', parsedData.totalLiquido.value);
-        }
-
         return parsedData;
 
     } catch (error) {
@@ -216,114 +187,94 @@ async function parsePedidoPdf(filePath) {
 
 async function parseListaEntrega(text) {
     const orders = [];
-    // Encontrar o bloco de R E L A Ç Ã O   DE  E N T R E G A S
-    const relacaoStart = text.indexOf('R E L A Ç Ã O   DE  E N T R E G A S');
-    if (relacaoStart === -1) return { isMulti: false, error: 'Lista de entrega não identificada' };
 
-    const relacaoText = text.substring(relacaoStart);
-
-    // Split por marcadores de item: "  001", "  002", etc no início da linha
-    // O padrão parece ser: duas espaços + 3 dígitos + espaço(s) + 14 espaços + número da nota
-    const itemSplitRegex = /\n\s{2}(\d{3})\s{14,}/g;
-    const blocks = relacaoText.split(itemSplitRegex);
-
-    // O primeiro bloco é o cabeçalho da relação
-    for (let i = 1; i < blocks.length; i += 2) {
-        const itemIdx = blocks[i];
-        const content = blocks[i + 1];
-        if (!content) continue;
-
-        const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        if (lines.length < 2) continue;
-
-        // Linha 1: Nota Fiscal Venda e Nome/Fone
-        // Ex: "029643  DIEGO - 4199611 - 3479"
-        const headerLine = lines[0];
-        const nfMatch = headerLine.match(/^(\d+)/);
-        const numero_pedido = nfMatch ? nfMatch[1] : `LISTA-${itemIdx}`;
-
-        let restoHeader = headerLine.replace(/^\d+/, '').trim();
-        // Separar Nome e Fone se possível
-        let nome_cliente = restoHeader;
-        let telefone_cliente = '';
-
-        // Se tiver "-", o que vem depois costuma ser fone
-        if (restoHeader.includes(' - ')) {
-            const parts = restoHeader.split(' - ');
-            nome_cliente = parts[0].trim();
-            telefone_cliente = parts.slice(1).join(' - ').trim();
-        } else if (restoHeader.match(/\d{2}/)) { // Se tiver números, tenta pegar como fone
-            const phoneMatch = restoHeader.match(/(.*?)\s+(\d.*)/);
-            if (phoneMatch) {
-                nome_cliente = phoneMatch[1].trim();
-                telefone_cliente = phoneMatch[2].trim();
-            }
-        }
-
-        // Linha 2: Data, Forma Pgto e Valor
-        // Ex: "12/03/2026            DINHEIRO             239,75"
-        const dataLine = lines[1];
-        const dataMatch = dataLine.match(/(\d{2}\/\d{2}\/\d{4})/);
-        const data_pedido = dataMatch ? dataMatch[1] : '';
-
-        // Valor agora suporta separador de milhar (.) e espaços no final
-        const valorMatch = dataLine.match(/([\d.]*,\d{2})\s*$/);
-        const total_liquido = valorMatch ? valorMatch[1] : '0,00';
-
-        // Forma de pagamento fica entre a data e o valor
-        let forma_pagamento = dataLine.replace(data_pedido || '', '').replace(total_liquido || '', '').trim();
-
-        // Tentar extrair endereço da Linha 3 (se existir e não for um item)
-        let endereco = { logradouro: '', numero: '', bairro: '', observacao: '' };
-        if (lines.length > 2 && !lines[2].match(/^\d+\d+\s+/) && !lines[2].match(/^\d{3}\s+/)) {
-            const addressLine = lines[2];
-            // Tenta decompor o endereço
-            const parts = addressLine.split(',').map(p => p.trim());
-            if (parts.length >= 2) {
-                endereco.logradouro = parts[0];
-                const numParts = parts[1].split(' ');
-                endereco.numero = numParts[0];
-                if (numParts.length > 1) {
-                    endereco.bairro = numParts.slice(1).join(' ');
-                }
-            } else {
-                endereco.logradouro = addressLine;
-            }
-        }
-
-        // Extrair itens deste bloco
-        const itens = [];
-        const itemLineRegex = /^(\d+)\d+\s+(.+?)\.{2,}(\d+[\d,.]*)/;
-        lines.forEach(line => {
-            const m = line.match(itemLineRegex);
-            if (m) {
-                itens.push({
-                    idx: parseInt(m[1]),
-                    descricao: m[2].trim(),
-                    quantidade: parseFloat(m[3].replace(',', '.')),
-                    unidade: 'un' // Unidade padrão para lista
-                });
-            }
-        });
-
-        orders.push({
-            numeroPedido: { value: numero_pedido, confianca: 'alta' },
-            dataPedido: { value: data_pedido, confianca: 'alta' },
-            nomeCliente: { value: nome_cliente, confianca: 'alta' },
-            telefoneCliente: { value: telefone_cliente, confianca: 'alta' },
-            emailCliente: { value: '', confianca: 'baixa' }, // Email raramente está na lista
-            totalLiquido: { value: total_liquido, confianca: 'alta' },
-            formaPagamento: { value: forma_pagamento, confianca: 'alta' },
-            endereco: endereco,
-            itens: itens,
-            isFromList: true
-        });
+    const boundaryPoints = [];
+    const boundaryRegex = /(\n\s{2}|\r\s{2})\d{3}\s{5,}(\d{6,})/g;
+    let match;
+    while ((match = boundaryRegex.exec(text)) !== null) {
+        boundaryPoints.push({ index: match.index, nf: match[2] });
     }
 
-    return {
-        isMulti: true,
-        pedidos: orders
-    };
+    if (boundaryPoints.length === 0) {
+        const aggressiveRegex = /\d{3}\s{10,}(\d{6,})/ig;
+        while ((match = aggressiveRegex.exec(text)) !== null) {
+            boundaryPoints.push({ index: match.index, nf: match[1] });
+        }
+    }
+
+    for (let i = 0; i < boundaryPoints.length; i++) {
+        const start = boundaryPoints[i].index;
+        const end = boundaryPoints[i + 1] ? boundaryPoints[i + 1].index : text.length;
+        const originalBlock = text.substring(start, end);
+        const normalizedBlock = originalBlock.replace(/\s+/g, ' ');
+
+        const pedido = {
+            numeroPedido: { value: boundaryPoints[i].nf, confianca: 'alta' },
+            dataPedido: { value: '', confianca: 'baixa' },
+            nomeCliente: { value: '', confianca: 'baixa' },
+            telefoneCliente: { value: '', confianca: 'baixa' },
+            emailCliente: { value: '', confianca: 'baixa' },
+            totalLiquido: { value: '0,00', confianca: 'baixa' },
+            formaPagamento: { value: '', confianca: 'baixa' },
+            endereco: { logradouro: '', numero: '', bairro: '', observacao: '' },
+            itens: [],
+            isFromList: true
+        };
+
+        const dateMatch = normalizedBlock.match(/(\d{2}\/\d{2}\/\d{4})/);
+        if (dateMatch) {
+            pedido.dataPedido = { value: dateMatch[1], confianca: 'alta' };
+            const afterDate = normalizedBlock.substring(dateMatch.index + dateMatch[0].length).trim();
+            const pgtoMatch = afterDate.match(/^[A-ZÀ-Ú\s]{3,20}/);
+            if (pgtoMatch) {
+                pedido.formaPagamento = { value: pgtoMatch[0].trim(), confianca: 'alta' };
+            }
+        }
+
+        const moneyMatches = [...normalizedBlock.matchAll(/(\d[\d.]*,\d{2})/g)];
+        if (moneyMatches.length > 0) {
+            pedido.totalLiquido = { value: moneyMatches[0][1], confianca: 'alta' };
+        }
+
+        const headerText = normalizedBlock.split(pedido.numeroPedido.value)[1].split(dateMatch ? dateMatch[1] : '---')[0].trim();
+        if (headerText.includes(' - ')) {
+            const p = headerText.split(' - ');
+            pedido.nomeCliente = { value: p[0].trim(), confianca: 'alta' };
+            pedido.telefoneCliente = { value: p.slice(1).join(' - ').trim(), confianca: 'alta' };
+        } else {
+            const foneEndMatch = headerText.match(/(.*?)\s+(41\s*9?\d.*)/);
+            if (foneEndMatch) {
+                pedido.nomeCliente = { value: foneEndMatch[1].trim(), confianca: 'alta' };
+                pedido.telefoneCliente = { value: foneEndMatch[2].trim(), confianca: 'alta' };
+            } else {
+                pedido.nomeCliente = { value: headerText, confianca: 'média' };
+            }
+        }
+
+        // Itens: Usa o originalBlock pois tem newlines
+        const itemsPrefix = "T.Valor R$";
+        const itemsAreaIndex = originalBlock.indexOf(itemsPrefix);
+        if (itemsAreaIndex !== -1) {
+            const itemsArea = originalBlock.substring(itemsAreaIndex + itemsPrefix.length);
+            const itemLines = itemsArea.split(/\n|\r/).map(l => l.trim()).filter(l => l.length > 10);
+            itemLines.forEach(line => {
+                // Regex para index e código mesclados
+                const dense = line.match(/^(\d{1})(\d{6,})(.+?)\.{3,}(\d+,\d{3}),(\d{3})(\d+,\d{2})$/);
+                if (dense) {
+                    pedido.itens.push({
+                        idx: parseInt(dense[1]),
+                        descricao: dense[3].trim(),
+                        quantidade: parseFloat(dense[4].replace(',', '.')),
+                        unidade: 'un'
+                    });
+                }
+            });
+        }
+
+        orders.push(pedido);
+    }
+
+    return { isMulti: true, pedidos: orders };
 }
 
 module.exports = {
