@@ -86,18 +86,39 @@ function extractTelefoneCliente(text) {
 }
 
 function decomporEndereco(text) {
-    let textoParaProcessar = text;
+    let textoParaProcessar = '';
+    let foundMarker = false;
+
+    // 1. Tenta por marcador explícito (Pedido Único)
     if (text.includes('Endereço de Entrega:')) {
-        const match = text.match(/Endereço de Entrega:[\s\S]*?\n([\s\S]+?)(?=Aprovação|$)/i);
+        const match = text.match(/Endereço de Entrega:[\s\S]*?(?:\r|\n|^)([\s\S]+?)(?=Aprovação|Vendedor|Transportador|Condição|Vencimento|Data\/Hora|$)/i);
         if (match) {
             textoParaProcessar = match[1].trim();
+            foundMarker = true;
         }
-    } else {
-        // Tenta achar o endereço após o Nome/Fone e antes dos Itens ou T.Valor R$
-        const endMatch = text.match(/(?:Telefone|Fone|Celular):.*?\n([\s\S]+?)(?:Previsão Entrega|Data Entrega|Entregar em|T\.Valor R\$|Forma Pg|Vendedor|Condição)/i);
-        if (endMatch) {
-            textoParaProcessar = endMatch[1].trim();
+    }
+
+    // 2. Tenta por fallback de Telefone (Outros formatos de pedido único)
+    if (!foundMarker) {
+        const fallMatch = text.match(/(?:Telefone|Fone|Celular):.*?(?:\r|\n)([\s\S]+?)(?:Previsão Entrega|Data Entrega|Entregar em|T\.Valor R\$|Forma Pg|Vendedor|Condição|DINHEIRO|CARTÃO|PIX|BOLETO)/i);
+        if (fallMatch) {
+            textoParaProcessar = fallMatch[1].trim();
+            foundMarker = true;
         }
+    }
+
+    // 3. Se não achou marcador, mas o texto foi passado (ex: do lote), valida se não é lixo
+    if (!foundMarker && text.trim().length > 5) {
+        const clean = text.trim();
+        // Se começar com palavras de pagamento, provavelmente não é endereço
+        const isNotAddress = /^(DINHEIRO|CARTÃO|PIX|BOLETO|TRANSFERÊNCIA|T\.VALOR|VALOR|TOTAL|ITEM|CÓDIGO)/i.test(clean);
+        if (!isNotAddress) {
+            textoParaProcessar = clean;
+        }
+    }
+
+    if (!textoParaProcessar) {
+        return { endereco: '', numero: '', bairro: '', observacao: '', original: '' };
     }
 
     const original = textoParaProcessar;
@@ -107,17 +128,19 @@ function decomporEndereco(text) {
     let observacao = '';
 
     const avisoRegex = /\(([^)]+)\)|(?:PRÓX|PERTO|AO LADO|EM FRENTE|PORTÃO|CASA DE COR|CASA COR|MURO)\s+[^,-]+/gi;
-    textoParaProcessar = original;
     const avisosEncontrados = original.match(avisoRegex);
 
+    let tempText = original;
     if (avisosEncontrados) {
         observacao = avisosEncontrados.join('; ');
         avisosEncontrados.forEach(a => {
-            textoParaProcessar = textoParaProcessar.replace(a, '');
+            tempText = tempText.replace(a, '');
         });
     }
 
-    const cleanParts = textoParaProcessar.split('-').map(p => p.trim()).filter(p => p.length > 0);
+    // Processamento de partes (Rua, Numero, Bairro)
+    const cleanParts = tempText.split('-').map(p => p.trim()).filter(p => p.length > 0);
+
     if (cleanParts.length >= 1) {
         const ruaNum = cleanParts[0].split(',');
         logradouro = ruaNum[0].trim();
@@ -137,6 +160,13 @@ function decomporEndereco(text) {
             }
         } else {
             bairro = cleanParts[1].trim();
+        }
+    } else if (!bairro && cleanParts.length === 1 && !numero) {
+        // Fallback para quando o número está no fim da string sem vírgula
+        const numMatch = logradouro.match(/(.*)\s+(\d+)$/);
+        if (numMatch) {
+            logradouro = numMatch[1].trim();
+            numero = numMatch[2].trim();
         }
     }
 
