@@ -55,7 +55,9 @@ class PedidoDetalhesActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             
-            val msg = "Olá, sou o entregador do seu pedido ${currentPedido?.numero_pedido}"
+            val msg = "Bom dia sou da conexão br 277 estou com seu pedido para realizar a entrega.\n" +
+                      "Gostaria de saber se tem alguém pra receber no endereço \n" +
+                      "A gente avisa uns 10 minutos antes de chegar no local"
             val intent = Intent(Intent.ACTION_VIEW)
             val phoneClean = fone.replace(Regex("[^0-9]"), "")
             val url = "https://api.whatsapp.com/send?phone=+55$phoneClean&text=${android.net.Uri.encode(msg)}"
