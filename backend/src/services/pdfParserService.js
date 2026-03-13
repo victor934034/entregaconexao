@@ -47,14 +47,24 @@ function extractTotalLiquido(text) {
     const totalLiquidoPos = text.indexOf('Total Liquido R$');
     if (totalLiquidoPos !== -1) {
         const afterTotal = text.substring(totalLiquidoPos);
+        // Tenta capturar o último valor monetário se houver concatenação (como visto no log)
         const matches = afterTotal.match(/\d+,\d{2}/g);
         if (matches && matches.length > 0) {
-            return { value: matches[0], confianca: 'alta' }; // It should be the first one after the label
+            // No caso de arquivoapp.pdf, o Total Liquido costuma ser o último valor do bloco ou o repetido no Vencto
+            // Vamos procurar especificamente por um valor que se repita no final do arquivo (pagamento)
+            const lastMatch = matches[matches.length - 1];
+            return { value: lastMatch, confianca: 'alta' };
         }
     }
+    // Fallback: procura o valor antes do rodapé ou perto das formas de pagamento
+    const paymentMatch = text.match(/(?:Valor R\$|DINHEIRO|CARTÃO|PIX|BOLETO|TRANSFERÊNCIA)[\s\S]{0,100}(\d+,\d{2})/i);
+    if (paymentMatch) {
+        return { value: paymentMatch[1], confianca: 'alta' };
+    }
+
     const allMatches = text.match(/\d+,\d{2}/g);
     if (allMatches && allMatches.length > 0) {
-        return { value: allMatches[allMatches.length - 1], confianca: 'alta' }; // Take last one as fallback
+        return { value: allMatches[allMatches.length - 1], confianca: 'baixa' };
     }
     return { value: '0,00', confianca: 'baixa' };
 }
@@ -91,9 +101,10 @@ function decomporEndereco(text) {
 
     // 1. Tenta por marcador explícito (Pedido Único)
     if (text.includes('Endereço de Entrega:')) {
-        const match = text.match(/Endereço de Entrega:[\s\S]*?(?:\r|\n|^)([\s\S]+?)(?=Aprovação|Vendedor|Transportador|Condição|Vencimento|Data\/Hora|$)/i);
+        // Regex mais específica para capturar a linha IMEDIATAMENTE após o rótulo
+        const match = text.match(/Endereço de Entrega:\s*[\r\n]+([\s\S]+?)(?=Aprovação|Vendedor|Transportador|Condição|Vencimento|Data\/Hora|$)/i);
         if (match) {
-            textoParaProcessar = match[1].trim();
+            textoParaProcessar = match[1].split(/[\r\n]/)[0].trim();
             foundMarker = true;
         }
     }
@@ -277,7 +288,14 @@ async function parseListaEntrega(text) {
 
         const moneyMatches = [...normalizedBlock.matchAll(/(\d[\d.]*,\d{2})/g)];
         if (moneyMatches.length > 0) {
-            pedido.totalLiquido = { value: moneyMatches[moneyMatches.length - 1][1], confianca: 'alta' };
+            // No modo Lote (Lista), o Total costuma estar na linha do cabeçalho, logo após Forma Pgto
+            // Vamos tentar achar o valor que vem após DINHEIRO/CARTAO etc no bloco
+            const headerValueMatch = normalizedBlock.match(/(?:DINHEIRO|CARTÃO|PIX|BOLETO|TRANSFERÊNCIA)\s+(\d+,\d{2})/i);
+            if (headerValueMatch) {
+                pedido.totalLiquido = { value: headerValueMatch[1], confianca: 'alta' };
+            } else {
+                pedido.totalLiquido = { value: moneyMatches[0][1], confianca: 'média' }; // Primeiro costuma ser o total na linha 20/22
+            }
         }
 
         let headerText = '';
