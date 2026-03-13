@@ -63,9 +63,14 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
 
     private fun handleUnauthorized() {
         val prefs = getApplication<Application>().getSharedPreferences("conexao_prefs", Context.MODE_PRIVATE)
-        prefs.edit().remove("token").apply()
-        _sessionExpired.value = true
-        _error.value = "Sessão expirada. Faça login novamente."
+        val token = prefs.getString("token", null)
+        
+        if (!token.isNullOrEmpty()) {
+            android.util.Log.e("PedidosViewModel", "Sessão invalidada (401). Removendo token.")
+            prefs.edit().remove("token").apply()
+            _sessionExpired.value = true
+            _error.value = "Sessão expirada. Faça login novamente."
+        }
     }
 
     fun carregarPedidosEntregador() {
@@ -136,6 +141,7 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
                     _statusUpdateSuccess.value = true
                     carregarPedidosEntregador()
                     carregarEstatisticas()
+                    carregarDetalhesPedido(pedidoId)
                 } else if (response.code() == 401) {
                     handleUnauthorized()
                 } else {

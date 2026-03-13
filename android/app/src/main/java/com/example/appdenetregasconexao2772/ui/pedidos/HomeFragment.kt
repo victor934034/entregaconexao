@@ -166,6 +166,14 @@ class HomeFragment : Fragment() {
             applyFilters()
         }
 
+        viewModel.statusUpdateSuccess.observe(viewLifecycleOwner) { success ->
+            if (success) {
+                // Ao aceitar um pedido, muda automaticamente para a aba "Em Andamento" (Index 1)
+                binding.tabLayoutStatus.getTabAt(1)?.select()
+                viewModel.carregarPedidosEntregador()
+            }
+        }
+
         viewModel.error.observe(viewLifecycleOwner) { msg ->
             Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
             binding.progressBar.visibility = View.GONE

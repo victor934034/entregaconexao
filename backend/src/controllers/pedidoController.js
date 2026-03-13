@@ -208,8 +208,8 @@ exports.atualizarStatus = async (req, res) => {
         const statusDe = pedido.status;
         pedido.status = status;
 
-        // Se o entregador está assumindo um pedido pendente
-        if (status === 'EM_ROTA' && !pedido.entregador_id && req.usuario.perfil === 'ENTREGADOR') {
+        // Se o entregador está assumindo um pedido pendente ou reatribuindo para si mesmo
+        if (status === 'EM_ROTA' && req.usuario.perfil === 'ENTREGADOR') {
             pedido.entregador_id = req.usuario.id;
         }
 

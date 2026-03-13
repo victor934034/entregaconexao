@@ -28,7 +28,9 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("conexao_prefs", MODE_PRIVATE)
         val token = prefs.getString("token", null)
 
-        if (token == null) {
+        android.util.Log.d("MainActivity", "Iniciando com Token: ${if (token.isNullOrEmpty()) "NULO" else "EXISTE"}")
+        
+        if (token.isNullOrEmpty()) {
             startActivity(Intent(this, com.example.appdenetregasconexao2772.ui.login.LoginActivity::class.java))
             finish()
             return

@@ -86,38 +86,38 @@ function extractTelefoneCliente(text) {
 }
 
 function decomporEndereco(text) {
-    let mainText = text;
+    let textoParaProcessar = text;
     if (text.includes('Endereço de Entrega:')) {
-        const match = text.match(/Endereço de Entrega:\s*\n([\s\S]+?)(?:\s+-\s+\n|Aprovação|$)/i);
+        const match = text.match(/Endereço de Entrega:[\s\S]*?\n([\s\S]+?)(?=Aprovação|$)/i);
         if (match) {
-            mainText = match[1].trim();
+            textoParaProcessar = match[1].trim();
         }
     } else {
         // Tenta achar o endereço após o Nome/Fone e antes dos Itens ou T.Valor R$
-        const endMatch = text.match(/(?:Fone|Celular):.*?\n([\s\S]+?)(?:Previsão Entrega|Data Entrega|Entregar em|T\.Valor R\$|Forma Pg|Vendedor|Condição)/i);
+        const endMatch = text.match(/(?:Telefone|Fone|Celular):.*?\n([\s\S]+?)(?:Previsão Entrega|Data Entrega|Entregar em|T\.Valor R\$|Forma Pg|Vendedor|Condição)/i);
         if (endMatch) {
-            mainText = endMatch[1].trim();
+            textoParaProcessar = endMatch[1].trim();
         }
     }
 
-    const original = mainText;
+    const original = textoParaProcessar;
     let logradouro = '';
     let numero = '';
     let bairro = '';
     let observacao = '';
 
     const avisoRegex = /\(([^)]+)\)|(?:PRÓX|PERTO|AO LADO|EM FRENTE|PORTÃO|CASA DE COR|CASA COR|MURO)\s+[^,-]+/gi;
-    let mainText = original;
+    textoParaProcessar = original;
     const avisosEncontrados = original.match(avisoRegex);
 
     if (avisosEncontrados) {
         observacao = avisosEncontrados.join('; ');
         avisosEncontrados.forEach(a => {
-            mainText = mainText.replace(a, '');
+            textoParaProcessar = textoParaProcessar.replace(a, '');
         });
     }
 
-    const cleanParts = mainText.split('-').map(p => p.trim()).filter(p => p.length > 0);
+    const cleanParts = textoParaProcessar.split('-').map(p => p.trim()).filter(p => p.length > 0);
     if (cleanParts.length >= 1) {
         const ruaNum = cleanParts[0].split(',');
         logradouro = ruaNum[0].trim();

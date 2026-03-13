@@ -33,6 +33,8 @@ class RegisterViewModel(application: Application) : AndroidViewModel(application
                         .putString("token", body.token)
                         .putInt("uid", body.usuario.id)
                         .putString("nome", body.usuario.nome)
+                        .putString("email", body.usuario.email)
+                        .putString("perfil", body.usuario.perfil)
                         .apply()
                         
                     _registerResult.value = Result.success(body)
