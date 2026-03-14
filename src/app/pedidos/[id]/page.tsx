@@ -197,7 +197,7 @@ export default function DetalhesPedido({ params }: { params: { id: string } }) {
 
                             {pedido.arquivo_pdf_path && (
                                 <a
-                                    href={`http://localhost:3000/uploads/pdfs/${pedido.arquivo_pdf_path}`}
+                                    href={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/uploads/pdfs/${pedido.arquivo_pdf_path}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="w-full bg-white border border-blue-300 text-blue-700 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-100 font-medium transition-colors"
