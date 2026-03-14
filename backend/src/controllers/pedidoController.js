@@ -1,6 +1,7 @@
 const { Pedido, ItemPedido, HistoricoStatus, Usuario, sequelize } = require('../models');
 const { parsePedidoPdf } = require('../services/pdfParserService');
 const socketService = require('../services/socketService');
+const supabase = require('../config/supabase');
 const { Op } = require('sequelize');
 
 exports.listarPedidos = async (req, res) => {
@@ -75,6 +76,33 @@ exports.criarPedido = async (req, res) => {
             // Atualiza o total_itens no pedido
             const totalItens = dadosPedido.itens.reduce((sum, item) => sum + (parseFloat(item.quantidade) || 0), 0);
             await novoPedido.update({ total_itens: totalItens }, { transaction: t });
+
+            // Subtrai do estoque no Supabase
+            try {
+                for (let item of dadosPedido.itens) {
+                    const itemName = item.descricao;
+                    const itemQtd = parseFloat(item.quantidade) || 0;
+
+                    // Busca o item no estoque pelo nome exato ou código
+                    const { data: estoqueData } = await supabase
+                        .from('estoque')
+                        .select('id, quantidade')
+                        .ilike('nome', itemName)
+                        .limit(1)
+                        .single();
+
+                    if (estoqueData) {
+                        const novaQtd = estoqueData.quantidade - itemQtd;
+                        await supabase
+                            .from('estoque')
+                            .update({ quantidade: novaQtd })
+                            .eq('id', estoqueData.id);
+                    }
+                }
+            } catch (estoqueError) {
+                console.error('Erro ao atualizar estoque:', estoqueError.message);
+                // Não bloquear a criação do pedido se o estoque falhar, mas logar o erro
+            }
         }
 
         await HistoricoStatus.create({

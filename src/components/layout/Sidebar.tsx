@@ -12,6 +12,7 @@ export function Sidebar() {
     const links = [
         { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['SUPER_ADM', 'ADM'] },
         { href: '/pedidos', label: 'Pedidos', icon: Package, roles: ['SUPER_ADM', 'ADM'] },
+        { href: '/estoque', label: 'Estoque', icon: Package, roles: ['SUPER_ADM', 'ADM'] },
         { href: '/entregadores', label: 'Entregadores', icon: Users, roles: ['SUPER_ADM', 'ADM'] },
         { href: '/usuarios', label: 'Usuários', icon: Users, roles: ['SUPER_ADM'] }, // Admin restrito via regras
         { href: '/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['SUPER_ADM', 'ADM'] },
@@ -37,8 +38,8 @@ export function Sidebar() {
                             key={link.href}
                             href={link.href}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                    ? 'bg-blue-800 text-white font-medium'
-                                    : 'text-blue-100 hover:bg-blue-800/50'
+                                ? 'bg-blue-800 text-white font-medium'
+                                : 'text-blue-100 hover:bg-blue-800/50'
                                 }`}
                         >
                             <Icon size={20} />
