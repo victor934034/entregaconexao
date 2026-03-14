@@ -178,33 +178,59 @@ exports.importarPdf = async (req, res) => {
 };
 exports.batchCriarItens = async (req, res) => {
     try {
-        const items = req.body; // Array of items
+        console.log('--- BATCH IMPORT START (v2.1) ---');
+        const items = req.body;
         if (!Array.isArray(items) || items.length === 0) {
+            console.error('Lote vazio ou inválido:', items);
             return res.status(400).json({ error: 'Nenhum item enviado.' });
         }
 
-        // Prepara os dados (garantindo que não venham IDs se existirem)
-        const itemsToInsert = items.map(item => ({
-            nome: item.nome,
-            quantidade: item.quantidade || 0,
-            modo_estocagem: item.modo_estocagem,
-            custo: item.custo || 0,
-            preco_venda: item.preco_venda || 0
-        }));
+        console.log(`Processando lote de ${items.length} itens.`);
+
+        // Prepara os dados com validação rigorosa
+        const itemsToInsert = items.map((item, index) => {
+            const qty = parseFloat(item.quantidade);
+            const cst = parseFloat(item.custo);
+            const vnd = parseFloat(item.preco_venda);
+
+            if (!item.nome) {
+                console.warn(`Item no índice ${index} sem nome:`, item);
+            }
+
+            return {
+                nome: item.nome || 'Produto Sem Nome',
+                quantidade: isNaN(qty) ? 0 : qty,
+                modo_estocagem: item.modo_estocagem || 'un',
+                custo: isNaN(cst) ? 0 : cst,
+                preco_venda: isNaN(vnd) ? 0 : vnd
+            };
+        });
+
+        console.log('Payload final para Supabase:', JSON.stringify(itemsToInsert.slice(0, 2), null, 2), '...');
 
         const { data, error } = await supabase
             .from('estoque')
             .insert(itemsToInsert)
             .select();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Erro detectado pelo Supabase:', error);
+            throw error;
+        }
 
-        res.status(201).json(data);
+        console.log('Lote salvo com sucesso. Itens:', data?.length);
+        res.status(201).json({
+            message: 'Itens importados com sucesso',
+            count: data?.length,
+            data: data
+        });
     } catch (error) {
-        console.error('Erro ao salvar itens em lote:', error);
+        console.error('CRITICAL: Erro ao salvar itens em lote:', error);
         res.status(500).json({
-            error: 'Erro ao salvar itens no banco.',
+            error: 'Erro interno ao salvar lote no banco.',
             details: error.message,
+            code: error.code,
+            hint: error.hint,
             stack: error.stack
         });
     }
