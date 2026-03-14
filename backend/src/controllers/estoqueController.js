@@ -187,18 +187,14 @@ exports.batchCriarItens = async (req, res) => {
 
         console.log(`Processando lote de ${items.length} itens.`);
 
-        // Prepara os dados com validação rigorosa
-        const itemsToInsert = items.map((item, index) => {
+        // 1. Gera o array de itens validados
+        const allItems = items.map((item, index) => {
             const qty = parseFloat(item.quantidade);
             const cst = parseFloat(item.custo);
             const vnd = parseFloat(item.preco_venda);
 
-            if (!item.nome) {
-                console.warn(`Item no índice ${index} sem nome:`, item);
-            }
-
             return {
-                nome: item.nome || 'Produto Sem Nome',
+                nome: (item.nome || `Produto Sem Nome ${index}`).trim(),
                 quantidade: isNaN(qty) ? 0 : qty,
                 modo_estocagem: item.modo_estocagem || 'un',
                 custo: isNaN(cst) ? 0 : cst,
@@ -206,21 +202,33 @@ exports.batchCriarItens = async (req, res) => {
             };
         });
 
-        console.log('Payload final para Supabase:', JSON.stringify(itemsToInsert.slice(0, 2), null, 2), '...');
+        // 2. Deduplica pelo NOME (mantém apenas a primeira ocorrência no lote)
+        const uniqueItemsMap = new Map();
+        allItems.forEach(item => {
+            if (!uniqueItemsMap.has(item.nome.toLowerCase())) {
+                uniqueItemsMap.set(item.nome.toLowerCase(), item);
+            }
+        });
+        const itemsToUpsert = Array.from(uniqueItemsMap.values());
 
+        console.log(`Deduplicado de ${allItems.length} para ${itemsToUpsert.length} itens únicos no lote.`);
+        console.log('Exemplo do payload:', JSON.stringify(itemsToUpsert.slice(0, 1), null, 2));
+
+        // 3. Usa UPSERT baseado na coluna 'nome'
+        // IMPORTANTE: Requer restrição de UNIQUE na coluna 'nome' no banco.
         const { data, error } = await supabase
             .from('estoque')
-            .insert(itemsToInsert)
+            .upsert(itemsToUpsert, { onConflict: 'nome' })
             .select();
 
         if (error) {
-            console.error('Erro detectado pelo Supabase:', error);
+            console.error('Erro no UPSERT Supabase:', error);
             throw error;
         }
 
-        console.log('Lote salvo com sucesso. Itens:', data?.length);
+        console.log('Lote processado com sucesso. Itens:', data?.length);
         res.status(201).json({
-            message: 'Itens importados com sucesso',
+            message: 'Itens importados/atualizados com sucesso',
             count: data?.length,
             data: data
         });
