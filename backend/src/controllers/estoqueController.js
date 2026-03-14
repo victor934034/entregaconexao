@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const { gerarPdfEstoque } = require('../services/pdfExportService');
 
 exports.listarEstoque = async (req, res) => {
     try {
@@ -139,5 +140,25 @@ exports.excluirItemEstoque = async (req, res) => {
         res.json({ message: 'Item excluído com sucesso.' });
     } catch (error) {
         res.status(500).json({ error: 'Erro ao excluir item.' });
+    }
+};
+
+exports.exportarPdf = async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('estoque')
+            .select('*')
+            .order('nome', { ascending: true });
+
+        if (error) throw error;
+
+        const pdfBytes = await gerarPdfEstoque(data);
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=estoque.pdf');
+        res.send(Buffer.from(pdfBytes));
+    } catch (error) {
+        console.error('Erro ao exportar PDF do estoque:', error);
+        res.status(500).json({ error: 'Erro ao exportar PDF.' });
     }
 };

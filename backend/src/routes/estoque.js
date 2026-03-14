@@ -10,6 +10,7 @@ const upload = multer({ storage: storage });
 
 // Rotas de Estoque (necessita ser admin)
 router.get('/', verificarToken, ehAdmin, estoqueController.listarEstoque);
+router.get('/exportar/pdf', verificarToken, ehAdmin, estoqueController.exportarPdf);
 router.get('/:id', verificarToken, ehAdmin, estoqueController.detalhesEstoque);
 router.post('/', verificarToken, ehAdmin, upload.single('foto'), estoqueController.criarItemEstoque);
 router.put('/:id', verificarToken, ehAdmin, upload.single('foto'), estoqueController.atualizarItemEstoque);

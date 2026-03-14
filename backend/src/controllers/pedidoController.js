@@ -136,7 +136,8 @@ exports.importarPdf = async (req, res) => {
 
         return res.json(extractedData);
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao processar PDF.' });
+        console.error('Erro ao processar PDF:', error);
+        res.status(500).json({ error: 'Erro ao processar PDF.', details: error.message });
     }
 };
 

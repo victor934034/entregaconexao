@@ -141,13 +141,44 @@ export default function EstoquePage() {
                     <h1 className="text-2xl font-bold tracking-tight text-gray-900">Estoque</h1>
                     <p className="text-gray-500">Gerencie os produtos e inventário do sistema</p>
                 </div>
-                <button
-                    onClick={() => { resetForm(); setModalOpen(true); }}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                    <Plus size={20} />
-                    Novo Produto
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={async () => {
+                            try {
+                                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/estoque/exportar/pdf`, {
+                                    headers: { 'Authorization': `Bearer ${token}` }
+                                });
+                                if (res.ok) {
+                                    const blob = await res.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `estoque_${new Date().toISOString().split('T')[0]}.pdf`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    a.remove();
+                                    window.URL.revokeObjectURL(url);
+                                } else {
+                                    const err = await res.json();
+                                    alert(`Erro ao exportar PDF: ${err.error || 'Erro desconhecido'}`);
+                                }
+                            } catch (error) {
+                                console.error('Erro ao exportar PDF:', error);
+                                alert('Erro de conexão ao exportar PDF.');
+                            }
+                        }}
+                        className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+                    >
+                        Exportar PDF
+                    </button>
+                    <button
+                        onClick={() => { resetForm(); setModalOpen(true); }}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+                    >
+                        <Plus size={20} />
+                        Novo Produto
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
