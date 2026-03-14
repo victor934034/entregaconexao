@@ -404,17 +404,21 @@ async function parseEstoquePdf(filePath) {
 
         // Regex patterns common for inventory lists
         // Ex: "001 Product Name 50 UN 10.00 20.00"
-        // Ex: "Item: Batata | Qtd: 10 | Un: kg"
-        const genericPattern = /(.+?)\s+(\d+[\d,.]*)\s*(un|pç|kg|mt|cx|rol|par)?\s*(\d+[\d,.]*)?\s*(\d+[\d,.]*)?/i;
+        // Ex: "Ripado Freio 280 un R$ 0,00 R$ 0,00"
+        // Captura: Nome, Qtd, Unidade (opcional), Custo (opcional), Preço Venda (opcional)
+        const genericPattern = /(.+?)\s+(\d+[\d,.]*)\s*(un|pç|kg|mt|cx|rol|par)?\s*(?:R\$\s*)?(\d+[\d,.]*)?\s*(?:R\$\s*)?(\d+[\d,.]*)?/i;
 
         lines.forEach(line => {
             const trimmed = line.trim();
-            if (trimmed.length < 5 || /estoque|inventário|relatório|página|total/i.test(trimmed)) return;
+            // Ignorar linhas curtas ou que contenham palavras-chave de cabeçalho/total/solicitação
+            if (trimmed.length < 5 || /estoque|inventário|relatório|página|total|solicitar|solicitação/i.test(trimmed)) return;
 
             const m = trimmed.match(genericPattern);
             if (m && m[1] && m[2]) {
                 const nome = m[1].replace(/^\d+[\s-.]*/, '').trim(); // Remove leading numbers
-                if (nome.length < 3) return;
+
+                // Filtro extra para o nome
+                if (nome.length < 3 || /solicitar|total/i.test(nome)) return;
 
                 items.push({
                     nome: nome,
