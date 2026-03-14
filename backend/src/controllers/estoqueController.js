@@ -202,6 +202,10 @@ exports.batchCriarItens = async (req, res) => {
         res.status(201).json(data);
     } catch (error) {
         console.error('Erro ao salvar itens em lote:', error);
-        res.status(500).json({ error: 'Erro ao salvar itens no banco.' });
+        res.status(500).json({
+            error: 'Erro ao salvar itens no banco.',
+            details: error.message,
+            stack: error.stack
+        });
     }
 };

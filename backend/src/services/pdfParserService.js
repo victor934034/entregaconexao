@@ -398,82 +398,94 @@ async function parseEstoquePdf(filePath) {
         const dataBuffer = fs.readFileSync(filePath);
         const data = await pdf(dataBuffer);
         const text = data.text;
-        const lines = text.split('\n');
+        const rawLines = text.split(/\n|\r/).map(l => l.trim()).filter(l => l.length > 0);
 
         const items = [];
+        const ignoreRegex = /estoque|inventário|relatório|página|total|solicitar|solicitação|lista de itens|qtdun\.|cliente:/i;
 
-        // Regex para capturar padrões numéricos (Qtd, Preços)
-        // Padrão: Nome ... Qtd ... Unit ... Preço1 ... Preço2
-        const genericPattern = /(.+?)\s+(\d+[\d,.]*)\s*(un|pç|kg|mt|cx|rol|par)?\s*(?:R\$\s*)?(\d+[\d,.]*)?\s*(?:R\$\s*)?(\d+[\d,.]*)?/i;
+        let currentItem = null;
 
-        lines.forEach(line => {
-            const trimmed = line.trim();
-            // Ignorar linhas curtas ou que contenham palavras-chave irrelevantes
-            if (trimmed.length < 5 || /estoque|inventário|relatório|página|total|solicitar|solicitação/i.test(trimmed)) return;
+        rawLines.forEach((line) => {
+            if (ignoreRegex.test(line)) return;
 
-            // Estratégia 1: Tentar dividir por múltiplos espaços (colunas comuns em PDF)
-            const parts = trimmed.split(/\s{2,}/);
+            // Pattern for a new item: starts with digit(s)
+            // We just capture the quantity at the start.
+            const itemStartMatch = line.match(/^(\d+)(.*)/);
 
-            if (parts.length >= 2) {
-                let nome = parts[0].trim();
-                let qtdStr = parts[1].trim();
-                let un = 'un';
-                let custoStr = '0';
-                let precoStr = '0';
-
-                // Se parts[1] for unidade (ex: "un"), a quantidade está em parts[2]
-                if (/^(un|pç|kg|mt|cx|rol|par)$/i.test(qtdStr) && parts.length > 2) {
-                    un = qtdStr;
-                    qtdStr = parts[2];
-                    if (parts.length > 3) custoStr = parts[3];
-                    if (parts.length > 4) precoStr = parts[4];
-                } else {
-                    // Verificamos se a unidade está grudada na quantidade ou no próximo campo
-                    const qtdMatch = qtdStr.match(/^(\d+[\d,.]*)\s*(un|pç|kg|mt|cx|rol|par)?/i);
-                    if (qtdMatch) {
-                        qtdStr = qtdMatch[1];
-                        un = qtdMatch[2] || 'un';
-                    }
-                    if (parts.length > 2) {
-                        un = /^(un|pç|kg|mt|cx|rol|par)$/i.test(parts[2]) ? parts[2] : un;
-                        custoStr = parts[2].includes('R$') || parts[2].match(/\d/) ? parts[2] : (parts[3] || '0');
-                        precoStr = parts[3] && (parts[3].includes('R$') || parts[3].match(/\d/)) ? parts[3] : (parts[4] || '0');
-                    }
+            if (itemStartMatch && itemStartMatch[1].length < 10) {
+                if (currentItem) {
+                    processAndAddItem(currentItem, items);
                 }
 
-                // Limpar nome de códigos iniciais (ex: "001 Produto")
-                nome = nome.replace(/^\d+[\s-.]*/, '').trim();
-
-                if (nome.length >= 3 && !/solicitar|total|estoque/i.test(nome)) {
-                    const parsedQty = parseFloat(qtdStr.replace('un', '').replace('.', '').replace(',', '.'));
-                    if (!isNaN(parsedQty)) {
-                        items.push({
-                            nome: nome,
-                            quantidade: parsedQty,
-                            modo_estocagem: un,
-                            custo: parseFloat(custoStr.replace('R$', '').trim().replace('.', '').replace(',', '.')) || 0,
-                            preco_venda: parseFloat(precoStr.replace('R$', '').trim().replace('.', '').replace(',', '.')) || 0
-                        });
-                        return; // Achou por colunas, pula pra próxima linha
-                    }
-                }
-            }
-
-            // Estratégia 2: Fallback para Regex se colunas falharem
-            const m = trimmed.match(genericPattern);
-            if (m && m[1] && m[2]) {
-                let nome = m[1].replace(/^\d+[\s-.]*/, '').trim();
-                if (nome.length < 3 || /solicitar|total/i.test(nome)) return;
-
-                items.push({
-                    nome: nome,
-                    quantidade: parseFloat(m[2].replace('.', '').replace(',', '.')),
-                    modo_estocagem: m[3] || 'un',
-                    custo: m[4] ? parseFloat(m[4].replace('R$', '').trim().replace('.', '').replace(',', '.')) : 0,
-                    preco_venda: m[5] ? parseFloat(m[5].replace('R$', '').trim().replace('.', '').replace(',', '.')) : 0
-                });
+                currentItem = {
+                    qtd: itemStartMatch[1],
+                    content: itemStartMatch[2].trim()
+                };
+            } else if (currentItem) {
+                currentItem.content += " " + line;
             }
         });
+
+        if (currentItem) {
+            processAndAddItem(currentItem, items);
+        }
+
+        function processAndAddItem(item, list) {
+            let content = item.content.trim();
+
+            // Extract prices from end of string
+            // Cases: "35,00 58,90" or "R$ 35,00 R$ 58,90" or "54,22" (single price)
+            const priceRegexDouble = /(?:R\$\s*)?(\d+(?:\.\d{3})*[,.]\d{2})\s*(?:R\$\s*)?(\d+(?:\.\d{3})*[,.]\d{2})$/;
+            const priceRegexSingle = /(?:R\$\s*)?(\d+(?:\.\d{3})*[,.]\d{2})$/;
+
+            let nome = content;
+            let custo = 0;
+            let venda = 0;
+
+            const doubleMatch = content.match(priceRegexDouble);
+            if (doubleMatch) {
+                custo = parseFloat(doubleMatch[1].replace(/\./g, '').replace(',', '.'));
+                venda = parseFloat(doubleMatch[2].replace(/\./g, '').replace(',', '.'));
+                nome = content.substring(0, content.lastIndexOf(doubleMatch[0])).trim();
+            } else {
+                const singleMatch = content.match(priceRegexSingle);
+                if (singleMatch) {
+                    venda = parseFloat(singleMatch[1].replace(/\./g, '').replace(',', '.'));
+                    nome = content.substring(0, content.lastIndexOf(singleMatch[0])).trim();
+                }
+            }
+
+            // Detect unit (e.g., PC, UN, KG, MT, PR)
+            // Units can be merged with the name (ex: PCRipado) or separated (ex: 2 Ripado)
+            let unit = 'un';
+            // Order matters: longer strings first or specific prefixes
+            const possibleUnits = ['PC', 'UN', 'KG', 'MT', 'CX', 'PR', 'RL', 'DZ', 'PÇ', 'DC'];
+
+            for (const u of possibleUnits) {
+                // Regex check for unit at start, possibly followed by name or space
+                // We use a boundary-like check: if it's merged, it's followed by a letter
+                const uMatch = nome.match(new RegExp(`^(${u})(\\s+|[A-Z][a-z])`, 'i'));
+                if (uMatch) {
+                    unit = uMatch[1].toLowerCase();
+                    // If matched via merged (group 2 starts with letter), we only cut the unit
+                    nome = nome.substring(unit.length).trim();
+                    break;
+                }
+            }
+
+            // Final cleanup: remove residual codes or trailing dots
+            nome = nome.replace(/^\d+[\s-.]*/, '').replace(/\.+$/, '').trim();
+
+            if (nome.length >= 2 && !/solicitar|total/i.test(nome)) {
+                list.push({
+                    nome: nome,
+                    quantidade: parseFloat(item.qtd),
+                    modo_estocagem: unit,
+                    custo: custo,
+                    preco_venda: venda
+                });
+            }
+        }
 
         return items;
     } catch (error) {
