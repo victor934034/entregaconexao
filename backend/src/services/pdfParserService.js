@@ -402,30 +402,75 @@ async function parseEstoquePdf(filePath) {
 
         const items = [];
 
-        // Regex patterns common for inventory lists
-        // Ex: "001 Product Name 50 UN 10.00 20.00"
-        // Ex: "Ripado Freio 280 un R$ 0,00 R$ 0,00"
-        // Captura: Nome, Qtd, Unidade (opcional), Custo (opcional), Preço Venda (opcional)
+        // Regex para capturar padrões numéricos (Qtd, Preços)
+        // Padrão: Nome ... Qtd ... Unit ... Preço1 ... Preço2
         const genericPattern = /(.+?)\s+(\d+[\d,.]*)\s*(un|pç|kg|mt|cx|rol|par)?\s*(?:R\$\s*)?(\d+[\d,.]*)?\s*(?:R\$\s*)?(\d+[\d,.]*)?/i;
 
         lines.forEach(line => {
             const trimmed = line.trim();
-            // Ignorar linhas curtas ou que contenham palavras-chave de cabeçalho/total/solicitação
+            // Ignorar linhas curtas ou que contenham palavras-chave irrelevantes
             if (trimmed.length < 5 || /estoque|inventário|relatório|página|total|solicitar|solicitação/i.test(trimmed)) return;
 
+            // Estratégia 1: Tentar dividir por múltiplos espaços (colunas comuns em PDF)
+            const parts = trimmed.split(/\s{2,}/);
+
+            if (parts.length >= 2) {
+                let nome = parts[0].trim();
+                let qtdStr = parts[1].trim();
+                let un = 'un';
+                let custoStr = '0';
+                let precoStr = '0';
+
+                // Se parts[1] for unidade (ex: "un"), a quantidade está em parts[2]
+                if (/^(un|pç|kg|mt|cx|rol|par)$/i.test(qtdStr) && parts.length > 2) {
+                    un = qtdStr;
+                    qtdStr = parts[2];
+                    if (parts.length > 3) custoStr = parts[3];
+                    if (parts.length > 4) precoStr = parts[4];
+                } else {
+                    // Verificamos se a unidade está grudada na quantidade ou no próximo campo
+                    const qtdMatch = qtdStr.match(/^(\d+[\d,.]*)\s*(un|pç|kg|mt|cx|rol|par)?/i);
+                    if (qtdMatch) {
+                        qtdStr = qtdMatch[1];
+                        un = qtdMatch[2] || 'un';
+                    }
+                    if (parts.length > 2) {
+                        un = /^(un|pç|kg|mt|cx|rol|par)$/i.test(parts[2]) ? parts[2] : un;
+                        custoStr = parts[2].includes('R$') || parts[2].match(/\d/) ? parts[2] : (parts[3] || '0');
+                        precoStr = parts[3] && (parts[3].includes('R$') || parts[3].match(/\d/)) ? parts[3] : (parts[4] || '0');
+                    }
+                }
+
+                // Limpar nome de códigos iniciais (ex: "001 Produto")
+                nome = nome.replace(/^\d+[\s-.]*/, '').trim();
+
+                if (nome.length >= 3 && !/solicitar|total|estoque/i.test(nome)) {
+                    const parsedQty = parseFloat(qtdStr.replace('un', '').replace('.', '').replace(',', '.'));
+                    if (!isNaN(parsedQty)) {
+                        items.push({
+                            nome: nome,
+                            quantidade: parsedQty,
+                            modo_estocagem: un,
+                            custo: parseFloat(custoStr.replace('R$', '').trim().replace('.', '').replace(',', '.')) || 0,
+                            preco_venda: parseFloat(precoStr.replace('R$', '').trim().replace('.', '').replace(',', '.')) || 0
+                        });
+                        return; // Achou por colunas, pula pra próxima linha
+                    }
+                }
+            }
+
+            // Estratégia 2: Fallback para Regex se colunas falharem
             const m = trimmed.match(genericPattern);
             if (m && m[1] && m[2]) {
-                const nome = m[1].replace(/^\d+[\s-.]*/, '').trim(); // Remove leading numbers
-
-                // Filtro extra para o nome
+                let nome = m[1].replace(/^\d+[\s-.]*/, '').trim();
                 if (nome.length < 3 || /solicitar|total/i.test(nome)) return;
 
                 items.push({
                     nome: nome,
-                    quantidade: parseFloat(m[2].replace(',', '.')),
+                    quantidade: parseFloat(m[2].replace('.', '').replace(',', '.')),
                     modo_estocagem: m[3] || 'un',
-                    custo: m[4] ? parseFloat(m[4].replace(',', '.')) : 0,
-                    preco_venda: m[5] ? parseFloat(m[5].replace(',', '.')) : 0
+                    custo: m[4] ? parseFloat(m[4].replace('R$', '').trim().replace('.', '').replace(',', '.')) : 0,
+                    preco_venda: m[5] ? parseFloat(m[5].replace('R$', '').trim().replace('.', '').replace(',', '.')) : 0
                 });
             }
         });
