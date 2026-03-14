@@ -228,10 +228,11 @@ exports.batchCriarItens = async (req, res) => {
         console.error('CRITICAL: Erro ao salvar itens em lote:', error);
         res.status(500).json({
             error: 'Erro interno ao salvar lote no banco.',
-            details: error.message,
-            code: error.code,
+            details: error.message || error.details,
+            message: error.message,
+            code: error.code || error.statusCode,
             hint: error.hint,
-            stack: error.stack
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };

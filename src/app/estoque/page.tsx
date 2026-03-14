@@ -80,13 +80,16 @@ export default function EstoquePage() {
         if (!importedItems.length) return;
         setImporting(true);
         try {
-            await api.post('/estoque/batch', importedItems);
+            const response = await api.post('/estoque/batch', importedItems);
             setImportModalOpen(false);
             carregarEstoque();
-            alert(`${importedItems.length} itens importados com sucesso!`);
-        } catch (error) {
+            const count = response.data.count || importedItems.length;
+            alert(`${count} itens importados com sucesso!`);
+        } catch (error: any) {
             console.error('Erro ao salvar itens importados:', error);
-            alert('Erro ao salvar itens importados.');
+            const serverMsg = error.response?.data?.details || error.response?.data?.error || '';
+            const hint = error.response?.data?.hint ? `\nDica: ${error.response.data.hint}` : '';
+            alert(`Erro ao salvar itens importados.\n\nDetalhes: ${serverMsg}${hint}\n\nSe o erro for sobre coluna inexistente (PGRST204), por favor execute o SQL enviado no chat.`);
         } finally {
             setImporting(false);
         }
