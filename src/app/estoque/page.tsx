@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Edit2, Trash2, Search, Package, Save, X, FileDown, FileUp, Check, AlertCircle } from 'lucide-react';
