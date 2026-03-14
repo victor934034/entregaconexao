@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit2, Trash2, Search, Package, Save, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Package, Save, X, FileDown } from 'lucide-react';
 import Image from 'next/image';
+import api from '@/lib/api';
 
 interface EstoqueItem {
     id: number;
@@ -144,32 +145,29 @@ export default function EstoquePage() {
                 <div className="flex gap-3">
                     <button
                         onClick={async () => {
+                            if (!confirm('Deseja exportar o relatório de estoque em PDF?')) return;
                             try {
-                                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/estoque/exportar/pdf`, {
-                                    headers: { 'Authorization': `Bearer ${token}` }
+                                const response = await api.get('/estoque/exportar/pdf', {
+                                    responseType: 'blob'
                                 });
-                                if (res.ok) {
-                                    const blob = await res.blob();
-                                    const url = window.URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = `estoque_${new Date().toISOString().split('T')[0]}.pdf`;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    a.remove();
-                                    window.URL.revokeObjectURL(url);
-                                } else {
-                                    const err = await res.json();
-                                    alert(`Erro ao exportar PDF: ${err.error || 'Erro desconhecido'}`);
-                                }
+
+                                const blob = new Blob([response.data], { type: 'application/pdf' });
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `estoque_${new Date().toISOString().split('T')[0]}.pdf`;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                window.URL.revokeObjectURL(url);
                             } catch (error) {
                                 console.error('Erro ao exportar PDF:', error);
-                                alert('Erro de conexão ao exportar PDF.');
+                                alert('Erro ao exportar PDF do estoque.');
                             }
                         }}
-                        className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm"
                     >
-                        Exportar PDF
+                        <FileDown size={18} /> Exportar PDF
                     </button>
                     <button
                         onClick={() => { resetForm(); setModalOpen(true); }}
