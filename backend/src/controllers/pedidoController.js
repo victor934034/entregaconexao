@@ -169,6 +169,30 @@ exports.editarPedido = async (req, res) => {
 
         if (req.body.itens) {
             console.log(`Limpando e recriando ${req.body.itens.length} itens...`);
+
+            // --- LÓGICA DE ESTOQUE (DEVOLVER ANTIGOS) ---
+            try {
+                const itensAntigos = await ItemPedido.findAll({ where: { pedido_id: pedido.id }, transaction: t });
+                for (let item of itensAntigos) {
+                    const { data: estoqueData } = await supabase
+                        .from('estoque')
+                        .select('id, quantidade')
+                        .ilike('nome', item.descricao)
+                        .limit(1)
+                        .single();
+
+                    if (estoqueData) {
+                        await supabase
+                            .from('estoque')
+                            .update({ quantidade: estoqueData.quantidade + parseFloat(item.quantidade) })
+                            .eq('id', estoqueData.id);
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao devolver estoque na edição:', err.message);
+            }
+            // --------------------------------------------
+
             await ItemPedido.destroy({ where: { pedido_id: pedido.id }, transaction: t });
 
             // Strip IDs to avoid primary key conflicts after destroy
@@ -193,6 +217,28 @@ exports.editarPedido = async (req, res) => {
             // Recalculate total_itens
             const totalItens = itens.reduce((acc, item) => acc + (parseFloat(item.quantidade) || 0), 0);
             await pedido.update({ total_itens: totalItens }, { transaction: t });
+
+            // --- LÓGICA DE ESTOQUE (SUBTRAIR NOVOS) ---
+            try {
+                for (let item of itens) {
+                    const { data: estoqueData } = await supabase
+                        .from('estoque')
+                        .select('id, quantidade')
+                        .ilike('nome', item.descricao)
+                        .limit(1)
+                        .single();
+
+                    if (estoqueData) {
+                        await supabase
+                            .from('estoque')
+                            .update({ quantidade: estoqueData.quantidade - parseFloat(item.quantidade) })
+                            .eq('id', estoqueData.id);
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao subtrair estoque na edição:', err.message);
+            }
+            // ------------------------------------------
         }
 
         // Registrar no histórico
@@ -236,6 +282,54 @@ exports.atualizarStatus = async (req, res) => {
         const statusDe = pedido.status;
         pedido.status = status;
 
+        // --- LÓGICA DE ESTOQUE (CANCELAMENTO) ---
+        if (status === 'CANCELADO' && statusDe !== 'CANCELADO') {
+            try {
+                const itens = await ItemPedido.findAll({ where: { pedido_id: pedido.id } });
+                for (let item of itens) {
+                    const { data: estoqueData } = await supabase
+                        .from('estoque')
+                        .select('id, quantidade')
+                        .ilike('nome', item.descricao)
+                        .limit(1)
+                        .single();
+
+                    if (estoqueData) {
+                        await supabase
+                            .from('estoque')
+                            .update({ quantidade: estoqueData.quantidade + parseFloat(item.quantidade) })
+                            .eq('id', estoqueData.id);
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao devolver estoque no cancelamento:', err.message);
+            }
+        }
+        // Se voltar de Cancelado para outro status (reativar pedido pendente)
+        else if (statusDe === 'CANCELADO' && status !== 'CANCELADO') {
+            try {
+                const itens = await ItemPedido.findAll({ where: { pedido_id: pedido.id } });
+                for (let item of itens) {
+                    const { data: estoqueData } = await supabase
+                        .from('estoque')
+                        .select('id, quantidade')
+                        .ilike('nome', item.descricao)
+                        .limit(1)
+                        .single();
+
+                    if (estoqueData) {
+                        await supabase
+                            .from('estoque')
+                            .update({ quantidade: estoqueData.quantidade - parseFloat(item.quantidade) })
+                            .eq('id', estoqueData.id);
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao subtrair estoque na reativação:', err.message);
+            }
+        }
+        // ----------------------------------------
+
         // Se o entregador está assumindo um pedido pendente ou reatribuindo para si mesmo
         if (status === 'EM_ROTA' && req.usuario.perfil === 'ENTREGADOR') {
             pedido.entregador_id = req.usuario.id;
@@ -264,6 +358,32 @@ exports.excluirPedido = async (req, res) => {
     try {
         const pedido = await Pedido.findByPk(req.params.id);
         if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+        // --- LÓGICA DE ESTOQUE (DEVOLVER ITENS) ---
+        // Só devolvemos se o pedido não estiver cancelado (pois se tiver cancelado já devolvemos itens no status)
+        if (pedido.status !== 'CANCELADO') {
+            try {
+                const itens = await ItemPedido.findAll({ where: { pedido_id: pedido.id } });
+                for (let item of itens) {
+                    const { data: estoqueData } = await supabase
+                        .from('estoque')
+                        .select('id, quantidade')
+                        .ilike('nome', item.descricao)
+                        .limit(1)
+                        .single();
+
+                    if (estoqueData) {
+                        await supabase
+                            .from('estoque')
+                            .update({ quantidade: estoqueData.quantidade + parseFloat(item.quantidade) })
+                            .eq('id', estoqueData.id);
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao devolver estoque na exclusão:', err.message);
+            }
+        }
+        // -----------------------------------------
 
         await pedido.destroy();
 
