@@ -1,8 +1,6 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit2, Trash2, Search, Package, Save, X, FileDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Package, Save, X, FileDown, FileUp, Check, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import api from '@/lib/api';
 
@@ -22,6 +20,10 @@ export default function EstoquePage() {
     const [loading, setLoading] = useState(true);
     const [busca, setBusca] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [importedItems, setImportedItems] = useState<Partial<EstoqueItem>[]>([]);
+    const [importing, setImporting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -40,13 +42,8 @@ export default function EstoquePage() {
 
     const carregarEstoque = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/estoque`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setItens(data);
-            }
+            const res = await api.get('/estoque');
+            setItens(res.data);
         } catch (error) {
             console.error('Erro ao buscar estoque:', error);
         } finally {
@@ -54,16 +51,49 @@ export default function EstoquePage() {
         }
     };
 
+    const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImporting(true);
+        const formData = new FormData();
+        formData.append('pdf', file);
+
+        try {
+            const res = await api.post('/estoque/importar-pdf', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setImportedItems(res.data);
+            setImportModalOpen(true);
+        } catch (error) {
+            console.error('Erro ao importar PDF:', error);
+            alert('Erro ao processar o PDF do estoque.');
+        } finally {
+            setImporting(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const confirmImport = async () => {
+        if (!importedItems.length) return;
+        setImporting(true);
+        try {
+            await api.post('/estoque/batch', importedItems);
+            setImportModalOpen(false);
+            carregarEstoque();
+            alert(`${importedItems.length} itens importados com sucesso!`);
+        } catch (error) {
+            console.error('Erro ao salvar itens importados:', error);
+            alert('Erro ao salvar itens importados.');
+        } finally {
+            setImporting(false);
+        }
+    };
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
         try {
-            const url = formData.id
-                ? `${process.env.NEXT_PUBLIC_API_URL}/api/estoque/${formData.id}`
-                : `${process.env.NEXT_PUBLIC_API_URL}/api/estoque`;
-
-            const method = formData.id ? 'PUT' : 'POST';
-
             const payload = new FormData();
             payload.append('nome', formData.nome);
             payload.append('quantidade', formData.quantidade);
@@ -75,19 +105,15 @@ export default function EstoquePage() {
                 payload.append('foto', fotoFile);
             }
 
-            const res = await fetch(url, {
-                method,
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: payload
-            });
-
-            if (res.ok) {
-                setModalOpen(false);
-                carregarEstoque();
-                resetForm();
+            if (formData.id) {
+                await api.put(`/estoque/${formData.id}`, payload);
             } else {
-                alert('Erro ao salvar item.');
+                await api.post('/estoque', payload);
             }
+
+            setModalOpen(false);
+            carregarEstoque();
+            resetForm();
         } catch (error) {
             console.error('Erro ao salvar item:', error);
             alert('Erro ao salvar item.');
@@ -98,14 +124,8 @@ export default function EstoquePage() {
         if (!confirm('Tem certeza que deseja excluir este item?')) return;
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/estoque/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                carregarEstoque();
-            }
+            await api.delete(`/estoque/${id}`);
+            carregarEstoque();
         } catch (error) {
             console.error('Erro ao excluir item:', error);
         }
@@ -143,6 +163,20 @@ export default function EstoquePage() {
                     <p className="text-gray-500">Gerencie os produtos e inventário do sistema</p>
                 </div>
                 <div className="flex gap-3">
+                    <input
+                        type="file"
+                        accept="application/pdf"
+                        ref={fileInputRef}
+                        onChange={handleImportPdf}
+                        className="hidden"
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={importing}
+                        className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+                    >
+                        <FileUp size={18} /> {importing ? 'Processando...' : 'Importar PDF'}
+                    </button>
                     <button
                         onClick={async () => {
                             if (!confirm('Deseja exportar o relatório de estoque em PDF?')) return;
@@ -229,7 +263,7 @@ export default function EstoquePage() {
                                         <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{item.nome}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.quantidade > 5 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {item.quantidade} un
+                                                {item.quantidade} {item.modo_estocagem || 'un'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-500">{item.modo_estocagem || '-'}</td>
@@ -260,6 +294,69 @@ export default function EstoquePage() {
                     </table>
                 </div>
             </div>
+
+            {/* Modal de Importação */}
+            {importModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden">
+                        <div className="flex justify-between items-center p-6 border-b bg-blue-50">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">Visualizar Importação</h2>
+                                <p className="text-sm text-gray-500">Foram encontrados {importedItems.length} itens no PDF</p>
+                            </div>
+                            <button onClick={() => setImportModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 max-h-[60vh] overflow-y-auto">
+                            <table className="w-full">
+                                <thead className="text-left text-sm font-semibold text-gray-700 border-b">
+                                    <tr>
+                                        <th className="pb-3">Item</th>
+                                        <th className="pb-3 text-center">Qtd</th>
+                                        <th className="pb-3">Custo</th>
+                                        <th className="pb-3">Venda</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {importedItems.map((item, idx) => (
+                                        <tr key={idx} className="border-b last:border-0 hover:bg-gray-50">
+                                            <td className="py-3 text-sm font-medium">{item.nome}</td>
+                                            <td className="py-3 text-center text-sm">{item.quantidade} {item.modo_estocagem}</td>
+                                            <td className="py-3 text-sm">{formatCurrency(item.custo || 0)}</td>
+                                            <td className="py-3 text-sm">{formatCurrency(item.preco_venda || 0)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {importedItems.length === 0 && (
+                                <div className="text-center py-8 text-gray-500">
+                                    <AlertCircle className="mx-auto mb-2 text-yellow-500" size={32} />
+                                    Nenhum item válido pôde ser extraído deste PDF. Verifique o formato do arquivo.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
+                            <button
+                                onClick={() => setImportModalOpen(false)}
+                                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmImport}
+                                disabled={importing || importedItems.length === 0}
+                                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                            >
+                                <Check size={20} />
+                                {importing ? 'Importando...' : 'Confirmar Importação'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal de Cadastro */}
             {modalOpen && (

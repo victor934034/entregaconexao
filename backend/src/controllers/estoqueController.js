@@ -1,5 +1,6 @@
 const supabase = require('../config/supabase');
 const { gerarPdfEstoque } = require('../services/pdfExportService');
+const { parseEstoquePdf } = require('../services/pdfParserService');
 
 exports.listarEstoque = async (req, res) => {
     try {
@@ -160,5 +161,47 @@ exports.exportarPdf = async (req, res) => {
     } catch (error) {
         console.error('Erro ao exportar PDF do estoque:', error);
         res.status(500).json({ error: 'Erro ao exportar PDF.' });
+    }
+};
+
+exports.importarPdf = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Nenhum arquivo PDF enviado.' });
+        }
+        const items = await parseEstoquePdf(req.file.path);
+        return res.json(items);
+    } catch (error) {
+        console.error('Erro ao processar PDF de estoque:', error);
+        res.status(500).json({ error: 'Erro ao processar PDF.', details: error.message });
+    }
+};
+exports.batchCriarItens = async (req, res) => {
+    try {
+        const items = req.body; // Array of items
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'Nenhum item enviado.' });
+        }
+
+        // Prepara os dados (garantindo que não venham IDs se existirem)
+        const itemsToInsert = items.map(item => ({
+            nome: item.nome,
+            quantidade: item.quantidade || 0,
+            modo_estocagem: item.modo_estocagem,
+            custo: item.custo || 0,
+            preco_venda: item.preco_venda || 0
+        }));
+
+        const { data, error } = await supabase
+            .from('estoque')
+            .insert(itemsToInsert)
+            .select();
+
+        if (error) throw error;
+
+        res.status(201).json(data);
+    } catch (error) {
+        console.error('Erro ao salvar itens em lote:', error);
+        res.status(500).json({ error: 'Erro ao salvar itens no banco.' });
     }
 };

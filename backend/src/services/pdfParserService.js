@@ -393,6 +393,47 @@ async function parseListaEntrega(text) {
     return { isMulti: true, pedidos: orders };
 }
 
+async function parseEstoquePdf(filePath) {
+    try {
+        const dataBuffer = fs.readFileSync(filePath);
+        const data = await pdf(dataBuffer);
+        const text = data.text;
+        const lines = text.split('\n');
+
+        const items = [];
+
+        // Regex patterns common for inventory lists
+        // Ex: "001 Product Name 50 UN 10.00 20.00"
+        // Ex: "Item: Batata | Qtd: 10 | Un: kg"
+        const genericPattern = /(.+?)\s+(\d+[\d,.]*)\s*(un|pç|kg|mt|cx|rol|par)?\s*(\d+[\d,.]*)?\s*(\d+[\d,.]*)?/i;
+
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed.length < 5 || /estoque|inventário|relatório|página|total/i.test(trimmed)) return;
+
+            const m = trimmed.match(genericPattern);
+            if (m && m[1] && m[2]) {
+                const nome = m[1].replace(/^\d+[\s-.]*/, '').trim(); // Remove leading numbers
+                if (nome.length < 3) return;
+
+                items.push({
+                    nome: nome,
+                    quantidade: parseFloat(m[2].replace(',', '.')),
+                    modo_estocagem: m[3] || 'un',
+                    custo: m[4] ? parseFloat(m[4].replace(',', '.')) : 0,
+                    preco_venda: m[5] ? parseFloat(m[5].replace(',', '.')) : 0
+                });
+            }
+        });
+
+        return items;
+    } catch (error) {
+        console.error('Erro ao processar PDF de estoque:', error.message);
+        throw new Error('Falha no processamento: ' + error.message);
+    }
+}
+
 module.exports = {
-    parsePedidoPdf
+    parsePedidoPdf,
+    parseEstoquePdf
 };
