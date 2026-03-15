@@ -83,7 +83,7 @@ exports.criarPedido = async (req, res) => {
                     const itemName = item.descricao;
                     const itemQtd = parseFloat(item.quantidade) || 0;
 
-                    // Busca o item no estoque pelo nome exato ou código de barras
+                    // Busca o item no estoque pelo nome exato ou código de barras (Unified Lookup)
                     const { data: estoqueData } = await supabase
                         .from('estoque')
                         .select('id, quantidade')
@@ -178,7 +178,7 @@ exports.editarPedido = async (req, res) => {
                     const { data: estoqueData } = await supabase
                         .from('estoque')
                         .select('id, quantidade')
-                        .or(`nome.ilike."${item.descricao}",barcode.eq."${item.descricao}"`)
+                        .or(`nome.ilike."${item.descricao}",barcode.eq."${item.descricao}"`) // Unified Lookup
                         .limit(1)
                         .single();
 

@@ -1,3 +1,5 @@
+// Unified Stock Routing for "Gestão de Items" App
+// Part of the Barcode System & Backend Unification Integration
 const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');

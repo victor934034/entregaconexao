@@ -38,6 +38,7 @@ exports.detalhesEstoque = async (req, res) => {
 
 exports.criarItemEstoque = async (req, res) => {
     try {
+        // Barcode integration as per Integration Guide
         const { nome, quantidade, modo_estocagem, custo, preco_venda, barcode } = req.body;
         let foto_url = null;
 
@@ -94,7 +95,7 @@ exports.atualizarItemEstoque = async (req, res) => {
             modo_estocagem,
             custo: parseFloat(custo) || 0,
             preco_venda: parseFloat(preco_venda) || 0,
-            barcode: barcode !== undefined ? barcode : undefined
+            barcode: barcode || null // Standardized to null for consistency
         };
 
         if (req.file) {
@@ -194,6 +195,8 @@ exports.batchCriarItens = async (req, res) => {
             const qty = parseFloat(item.quantidade);
             const cst = parseFloat(item.custo);
             const vnd = parseFloat(item.preco_venda);
+
+            // Barcode field included in batch processing
 
             return {
                 nome: (item.nome || `Produto Sem Nome ${index}`).trim(),
