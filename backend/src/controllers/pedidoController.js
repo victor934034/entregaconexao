@@ -83,11 +83,11 @@ exports.criarPedido = async (req, res) => {
                     const itemName = item.descricao;
                     const itemQtd = parseFloat(item.quantidade) || 0;
 
-                    // Busca o item no estoque pelo nome exato ou código
+                    // Busca o item no estoque pelo nome exato ou código de barras
                     const { data: estoqueData } = await supabase
                         .from('estoque')
                         .select('id, quantidade')
-                        .ilike('nome', itemName)
+                        .or(`nome.ilike."${itemName}",barcode.eq."${itemName}"`)
                         .limit(1)
                         .single();
 
@@ -178,7 +178,7 @@ exports.editarPedido = async (req, res) => {
                     const { data: estoqueData } = await supabase
                         .from('estoque')
                         .select('id, quantidade')
-                        .ilike('nome', item.descricao)
+                        .or(`nome.ilike."${item.descricao}",barcode.eq."${item.descricao}"`)
                         .limit(1)
                         .single();
 
@@ -225,7 +225,7 @@ exports.editarPedido = async (req, res) => {
                     const { data: estoqueData } = await supabase
                         .from('estoque')
                         .select('id, quantidade')
-                        .ilike('nome', item.descricao)
+                        .or(`nome.ilike."${item.descricao}",barcode.eq."${item.descricao}"`)
                         .limit(1)
                         .single();
 
@@ -291,7 +291,7 @@ exports.atualizarStatus = async (req, res) => {
                     const { data: estoqueData } = await supabase
                         .from('estoque')
                         .select('id, quantidade')
-                        .ilike('nome', item.descricao)
+                        .or(`nome.ilike."${item.descricao}",barcode.eq."${item.descricao}"`)
                         .limit(1)
                         .single();
 
@@ -314,7 +314,7 @@ exports.atualizarStatus = async (req, res) => {
                     const { data: estoqueData } = await supabase
                         .from('estoque')
                         .select('id, quantidade')
-                        .ilike('nome', item.descricao)
+                        .or(`nome.ilike."${item.descricao}",barcode.eq."${item.descricao}"`)
                         .limit(1)
                         .single();
 
@@ -369,7 +369,7 @@ exports.excluirPedido = async (req, res) => {
                     const { data: estoqueData } = await supabase
                         .from('estoque')
                         .select('id, quantidade')
-                        .ilike('nome', item.descricao)
+                        .or(`nome.ilike."${item.descricao}",barcode.eq."${item.descricao}"`)
                         .limit(1)
                         .single();
 

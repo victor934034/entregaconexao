@@ -38,7 +38,7 @@ exports.detalhesEstoque = async (req, res) => {
 
 exports.criarItemEstoque = async (req, res) => {
     try {
-        const { nome, quantidade, modo_estocagem, custo, preco_venda } = req.body;
+        const { nome, quantidade, modo_estocagem, custo, preco_venda, barcode } = req.body;
         let foto_url = null;
 
         if (req.file) {
@@ -70,7 +70,8 @@ exports.criarItemEstoque = async (req, res) => {
                 modo_estocagem,
                 custo: parseFloat(custo) || 0,
                 preco_venda: parseFloat(preco_venda) || 0,
-                foto_url
+                foto_url,
+                barcode: barcode || null
             }])
             .select();
 
@@ -85,7 +86,7 @@ exports.criarItemEstoque = async (req, res) => {
 exports.atualizarItemEstoque = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, quantidade, modo_estocagem, custo, preco_venda } = req.body;
+        const { nome, quantidade, modo_estocagem, custo, preco_venda, barcode } = req.body;
 
         let updateData = {
             nome,
@@ -93,6 +94,7 @@ exports.atualizarItemEstoque = async (req, res) => {
             modo_estocagem,
             custo: parseFloat(custo) || 0,
             preco_venda: parseFloat(preco_venda) || 0,
+            barcode: barcode !== undefined ? barcode : undefined
         };
 
         if (req.file) {
@@ -198,7 +200,8 @@ exports.batchCriarItens = async (req, res) => {
                 quantidade: isNaN(qty) ? 0 : qty,
                 modo_estocagem: item.modo_estocagem || 'un',
                 custo: isNaN(cst) ? 0 : cst,
-                preco_venda: isNaN(vnd) ? 0 : vnd
+                preco_venda: isNaN(vnd) ? 0 : vnd,
+                barcode: item.barcode || null
             };
         });
 
