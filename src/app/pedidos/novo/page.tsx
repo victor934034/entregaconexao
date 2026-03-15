@@ -350,6 +350,13 @@ export default function NovoPedido() {
                                                 telefone_cliente: data.telefoneCliente?.value || '',
                                                 total_liquido: data.totalLiquido?.value || '',
                                                 forma_pagamento: data.formaPagamento?.value || '',
+                                                endereco: data.endereco?.endereco || '',
+                                                numero_end: data.endereco?.numero || '',
+                                                bairro: data.endereco?.bairro || '',
+                                                observacao_endereco: data.endereco?.observacao || '',
+                                                email_cliente: data.emailCliente?.value || '',
+                                                data_entrega_programada: formatDateForInput(data.dataEntregaProgramada?.value) || '',
+                                                hora_entrega_programada: data.horaEntregaProgramada?.value || '',
                                                 itens: data.itens || []
                                             }));
                                         }
@@ -437,6 +444,13 @@ export default function NovoPedido() {
                                                 telefone_cliente: data.telefoneCliente?.value || '',
                                                 total_liquido: data.totalLiquido?.value || '',
                                                 forma_pagamento: data.formaPagamento?.value || '',
+                                                endereco: data.endereco?.endereco || '',
+                                                numero_end: data.endereco?.numero || '',
+                                                bairro: data.endereco?.bairro || '',
+                                                observacao_endereco: data.endereco?.observacao || '',
+                                                email_cliente: data.emailCliente?.value || '',
+                                                data_entrega_programada: formatDateForInput(data.dataEntregaProgramada?.value) || '',
+                                                hora_entrega_programada: data.horaEntregaProgramada?.value || '',
                                                 itens: data.itens || []
                                             }));
                                         }
