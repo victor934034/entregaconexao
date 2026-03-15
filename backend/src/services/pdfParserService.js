@@ -203,6 +203,10 @@ async function parsePedidoPdf(filePath) {
             return await parseListaEntrega(text);
         }
 
+        if (text.includes('LISTA DE ITENS - ORÇAMENTOS')) {
+            return await parseOrcamentoLote(text);
+        }
+
         const endereco = decomporEndereco(text);
         const parsedData = {
             isMulti: false,
@@ -232,6 +236,90 @@ async function parsePedidoPdf(filePath) {
         console.error('Erro ao processar PDF:', error.message);
         throw new Error('Falha no processamento: ' + error.message);
     }
+}
+
+async function parseOrcamentoLote(text) {
+    const orders = [];
+    // Split by "Cliente:" but keep the marker using lookahead
+    const blocks = text.split(/(?=Cliente:)/);
+
+    // The first block might be the header "LISTA DE ITENS - ORÇAMENTOS"
+    blocks.forEach(block => {
+        if (!block.includes('Cliente:')) return;
+
+        const lines = block.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const pedido = {
+            numeroPedido: { value: 'ORC-' + Math.random().toString(36).substr(2, 6).toUpperCase(), confianca: 'baixa' },
+            dataPedido: { value: new Date().toLocaleDateString('pt-BR'), confianca: 'baixa' },
+            nomeCliente: { value: '', confianca: 'baixa' },
+            telefoneCliente: { value: '', confianca: 'baixa' },
+            emailCliente: { value: '', confianca: 'baixa' },
+            totalLiquido: { value: '0,00', confianca: 'baixa' },
+            formaPagamento: { value: 'A combinar', confianca: 'baixa' },
+            endereco: { endereco: '', numero: '', bairro: '', observacao: '' },
+            itens: [],
+            isFromOrcamento: true
+        };
+
+        // Extract Client Name
+        const clienteMatch = block.match(/Cliente:\s*([^\n\r]+)/i);
+        if (clienteMatch) {
+            pedido.nomeCliente = { value: clienteMatch[1].trim(), confianca: 'alta' };
+        }
+
+        // Logic for Item Extraction
+        // Items look like: "741PCRipado 16x290 Pinus35,0058,90"
+        // Pattern: [Qtd][Un][Description][VlUnit][Total]
+        // Prices usually have two decimals at the end
+        lines.forEach(line => {
+            if (line.includes('Cliente:') || line.includes('QtdUn.') || line.includes('Total')) return;
+
+            // Try to match the dense format: (Qtd)(Un)(Description)(Price1,Price2)
+            // Example: "741PCRipado 16x290 Pinus35,0058,90"
+            // Case 1: Triple digit + PC/DC + text + prices
+            const denseMatch = line.match(/^(\d+)(PC|DC|UN|KG|MT|PR|CX|UN|PÇ)?(.+?)(\d+,\d{2})?(\d+,\d{2})?$/i);
+
+            if (denseMatch) {
+                const qtd = denseMatch[1];
+                const un = denseMatch[2] || 'un';
+                let desc = denseMatch[3].trim();
+                const total = denseMatch[5] || denseMatch[4] || '0,00';
+
+                // Cleanup description from numeric prefixes if it was matched in desc
+                desc = desc.replace(/^\d+/, '').trim();
+
+                if (desc.length > 2 && !/Solicitar|Danificado/i.test(desc)) {
+                    pedido.itens.push({
+                        idx: pedido.itens.length + 1,
+                        descricao: desc,
+                        quantidade: parseFloat(qtd),
+                        unidade: un.toLowerCase()
+                    });
+                }
+            } else {
+                // Secondary match for less dense lines: "2Brize Tabaco54,00"
+                const simpleMatch = line.match(/^(\d+)(.+?)(\d+,\d{2})?$/);
+                if (simpleMatch) {
+                    const qtd = simpleMatch[1];
+                    let desc = simpleMatch[2].trim();
+                    if (desc.length > 2 && !/Solicitar|Danificado/i.test(desc)) {
+                        pedido.itens.push({
+                            idx: pedido.itens.length + 1,
+                            descricao: desc,
+                            quantidade: parseFloat(qtd),
+                            unidade: 'un'
+                        });
+                    }
+                }
+            }
+        });
+
+        if (pedido.itens.length > 0) {
+            orders.push(pedido);
+        }
+    });
+
+    return { isMulti: true, pedidos: orders };
 }
 
 async function parseListaEntrega(text) {

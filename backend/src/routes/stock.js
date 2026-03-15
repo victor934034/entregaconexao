@@ -53,8 +53,12 @@ router.get('/products', async (req, res) => {
 });
 
 router.patch('/products/:id/quantity', async (req, res) => {
-    const { id } = req.params;
+    let { id } = req.params;
+    // Clean ID: "14.0" -> "14"
+    if (id && id.includes('.')) id = id.split('.')[0];
+
     const { quantidade } = req.body;
+    console.log(`[STOCK] PATCH quantity for ID: ${id}, New Quantity: ${quantidade}`);
 
     try {
         const { data, error } = await supabase
@@ -64,8 +68,12 @@ router.patch('/products/:id/quantity', async (req, res) => {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error(`[STOCK] PATCH Error: ${error.message}`);
+            throw error;
+        }
 
+        console.log(`[STOCK] PATCH Success for ID: ${id}`);
         res.json({
             success: true,
             product: data
@@ -73,13 +81,15 @@ router.patch('/products/:id/quantity', async (req, res) => {
     } catch (error) {
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            details: error
         });
     }
 });
 
 router.post('/products', async (req, res) => {
     const product = req.body;
+    console.log(`[STOCK] POST new product: ${product.nome}`);
     // Remove ID if provided to let Supabase generate it
     delete product.id;
 
@@ -90,8 +100,12 @@ router.post('/products', async (req, res) => {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error(`[STOCK] POST Error: ${error.message}`);
+            throw error;
+        }
 
+        console.log(`[STOCK] POST Success, New ID: ${data.id}`);
         res.json({
             success: true,
             product: data
@@ -99,14 +113,19 @@ router.post('/products', async (req, res) => {
     } catch (error) {
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            details: error
         });
     }
 });
 
 router.put('/products/:id', async (req, res) => {
-    const { id } = req.params;
+    let { id } = req.params;
+    // Clean ID: "14.0" -> "14"
+    if (id && id.includes('.')) id = id.split('.')[0];
+
     const product = req.body;
+    console.log(`[STOCK] PUT update product ID: ${id}`);
     delete product.id; // Ensure we don't try to update the ID
 
     try {
@@ -117,8 +136,12 @@ router.put('/products/:id', async (req, res) => {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error(`[STOCK] PUT Error: ${error.message}`);
+            throw error;
+        }
 
+        console.log(`[STOCK] PUT Success for ID: ${id}`);
         res.json({
             success: true,
             product: data
@@ -126,7 +149,8 @@ router.put('/products/:id', async (req, res) => {
     } catch (error) {
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            details: error
         });
     }
 });
