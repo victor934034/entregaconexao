@@ -141,6 +141,103 @@ exports.importarPdf = async (req, res) => {
     }
 };
 
+exports.importarLote = async (req, res) => {
+    try {
+        if (!req.files || !req.files.pdf || !req.files.csv) {
+            return res.status(400).json({ error: 'É necessário enviar os arquivos PDF e CSV.' });
+        }
+
+        const pdfFile = req.files.pdf[0];
+        const csvFile = req.files.csv[0];
+
+        // 1. Processar PDF
+        const pdfData = await parsePedidoPdf(pdfFile.path);
+        
+        // 2. Processar CSV (Puxar buffer para string e quebrar em linhas)
+        const fs = require('fs');
+        const csvString = fs.readFileSync(csvFile.path, 'utf-8');
+        const csvLines = csvString.split('\n');
+
+        // Pular a primeira linha (cabeçalhos) se necessário, ou usar mapeamento direto
+        // Assumindo as colunas do "Relatório LS.CSV" passadas na query
+        const addressMap = new Map();
+        
+        csvLines.forEach(line => {
+            const cols = line.split(';'); // O separador do CSV geralmente é ; ou , em pt-BR
+            if (cols.length > 10) {
+                // Estrutura provável:
+                // Ordem(0)|Sit. Pedido(1)|Nota Fiscal(2)|Data/Hora(3)|Estado(4)|Tipo(5)|Cliente - Razão Social(6)|Bairro(7)|Municipio(8)...Logradouro|CEP|Cód. Cliente
+                const nf = cols[2]?.trim();
+                const uf = cols[4]?.trim();
+                const cliente = cols[6]?.trim();
+                const bairro = cols[7]?.trim();
+                const municipio = cols[8]?.trim();
+                
+                // Buscar Logradouro (geralmente nas ultimas colunas) - 
+                // Vimos "Logradouro CEP Cód. Cliente" nas ultimas colunas. 
+                // Assumindo Logradouro como penultimo/antepenultimo
+                const logradouro = cols[cols.length - 3]?.trim() || cols[cols.length - 4]?.trim() || '';
+
+                if (nf || cliente) {
+                    addressMap.set(nf, { cliente, bairro, municipio, uf, logradouro });
+                    // Adicionar por nome também para fallback
+                    if (cliente) {
+                        // Salva uppercase pra buscas case-insensitive
+                        addressMap.set(cliente.toUpperCase(), { nf, bairro, municipio, uf, logradouro }); 
+                    }
+                }
+            }
+        });
+
+        // 3. Mesclar Dados (Somente se for Multi (lote))
+        if (pdfData.isMulti && pdfData.pedidos) {
+            pdfData.pedidos = pdfData.pedidos.map(pedido => {
+                const numeroPDF = pedido.numeroPedido.value;
+                const nomePDF = pedido.nomeCliente.value.toUpperCase();
+                
+                // Buscar no MAP (primeiro por NF, depois por nome)
+                let addrInfo = addressMap.get(numeroPDF);
+                if (!addrInfo) {
+                    // Fallback para nome aproximado
+                    for (const [key, val] of addressMap.entries()) {
+                        if (typeof key === 'string' && key.includes(nomePDF) || nomePDF.includes(key)) {
+                            addrInfo = val;
+                            break;
+                        }
+                    }
+                }
+
+                if (addrInfo) {
+                    // Update the order with CSV address data
+                    let enderecoParsed = addrInfo.logradouro;
+                    let numParsed = '';
+                    
+                    if (enderecoParsed.includes(',')) {
+                        const parts = enderecoParsed.split(',');
+                        enderecoParsed = parts[0].trim();
+                        numParsed = parts[1].trim();
+                    }
+
+                    pedido.endereco.endereco = enderecoParsed;
+                    pedido.endereco.numero = numParsed;
+                    pedido.endereco.bairro = addrInfo.bairro;
+                    pedido.cidade = addrInfo.municipio;
+                    pedido.estado = addrInfo.uf;
+                    pedido.nomeCliente.value = addrInfo.cliente || pedido.nomeCliente.value; // Preferir nome completo do CSV
+                }
+
+                return pedido;
+            });
+        }
+
+        return res.json(pdfData);
+
+    } catch (error) {
+        console.error('Erro ao importar lote PDF + CSV:', error);
+        res.status(500).json({ error: 'Erro ao processar lote.', details: error.message });
+    }
+};
+
 exports.editarPedido = async (req, res) => {
     const t = await sequelize.transaction();
     try {

@@ -36,7 +36,8 @@ export default function NovoPedido() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [file, setFile] = useState<File | null>(null);
-    const [importMode, setImportMode] = useState<'single' | 'multi' | null>(null);
+    const [csvFile, setCsvFile] = useState<File | null>(null);
+    const [importMode, setImportMode] = useState<'single' | 'multi' | 'lote-completo' | null>(null);
 
     const [form, setForm] = useState<FormState>({
         numero_pedido: '',
@@ -274,7 +275,7 @@ export default function NovoPedido() {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Opção 1: Pedido Único */}
                 <div
                     onClick={() => document.getElementById('file-single')?.click()}
@@ -311,6 +312,7 @@ export default function NovoPedido() {
                                     setWarnings([]);
                                     setMultiOrders([]);
                                     setCurrentMultiIndex(null);
+                                    setCsvFile(null);
                                     const formData = new FormData();
                                     formData.append('pdf', selectedFile);
                                     try {
@@ -405,6 +407,7 @@ export default function NovoPedido() {
                                     setWarnings([]);
                                     setMultiOrders([]);
                                     setCurrentMultiIndex(null);
+                                    setCsvFile(null);
                                     const formData = new FormData();
                                     formData.append('pdf', selectedFile);
                                     try {
@@ -463,6 +466,122 @@ export default function NovoPedido() {
                             }
                         }}
                     />
+                </div>
+
+                {/* Opção 3: Lote Completo (PDF + CSV) */}
+                <div
+                    className={`relative group overflow-hidden rounded-2xl border-2 transition-all duration-300 ${importMode === 'lote-completo' ? 'border-emerald-600 bg-emerald-50 shadow-lg scale-[1.02]' : 'border-gray-100 bg-white hover:border-emerald-300 hover:shadow-md'
+                        }`}
+                >
+                    <div className="p-6 h-full flex flex-col">
+                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors ${importMode === 'lote-completo' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100'
+                            }`}>
+                            <Layers size={28} />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Lote Completo (PDF + CSV)</h3>
+                        <p className="text-gray-600 text-sm leading-relaxed mb-4 flex-grow">
+                            Importe o PDF com os itens e o CSV com os endereços. O sistema unirá os dados automaticamente.
+                        </p>
+
+                        <div className="flex flex-col gap-3 mt-auto">
+                            <button
+                                type="button"
+                                onClick={() => { setImportMode('lote-completo'); document.getElementById('file-lote-pdf')?.click(); }}
+                                className={`w-full py-2 px-3 rounded text-sm font-semibold border transition-colors flex items-center justify-center gap-2 ${file && importMode === 'lote-completo' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'}`}
+                            >
+                                <Upload size={16} /> {file && importMode === 'lote-completo' ? 'PDF Selecionado' : '1. Selecionar PDF'}
+                            </button>
+                            <input
+                                id="file-lote-pdf"
+                                type="file"
+                                accept="application/pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                    if (e.target.files?.[0]) {
+                                        setFile(e.target.files[0]);
+                                        setImportMode('lote-completo');
+                                    }
+                                }}
+                            />
+
+                            <button
+                                type="button"
+                                onClick={() => { setImportMode('lote-completo'); document.getElementById('file-lote-csv')?.click(); }}
+                                className={`w-full py-2 px-3 rounded text-sm font-semibold border transition-colors flex items-center justify-center gap-2 ${csvFile && importMode === 'lote-completo' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'}`}
+                            >
+                                <Upload size={16} /> {csvFile && importMode === 'lote-completo' ? 'CSV Selecionado' : '2. Selecionar CSV'}
+                            </button>
+                            <input
+                                id="file-lote-csv"
+                                type="file"
+                                accept=".csv"
+                                className="hidden"
+                                onChange={(e) => {
+                                    if (e.target.files?.[0]) {
+                                        setCsvFile(e.target.files[0]);
+                                        setImportMode('lote-completo');
+                                    }
+                                }}
+                            />
+
+                            {file && csvFile && importMode === 'lote-completo' && (
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        setLoading(true);
+                                        setWarnings([]);
+                                        setMultiOrders([]);
+                                        setCurrentMultiIndex(null);
+
+                                        const formData = new FormData();
+                                        formData.append('pdf', file);
+                                        formData.append('csv', csvFile);
+
+                                        try {
+                                            const resp = await api.post('/pedidos/importar-lote', formData, {
+                                                headers: { 'Content-Type': 'multipart/form-data' }
+                                            });
+                                            const data = resp.data;
+
+                                            if (data.isMulti) {
+                                                const mapped = data.pedidos.map((p: any) => ({
+                                                    numero_pedido: p.numeroPedido.value,
+                                                    data_emissao: formatDateForInput(p.dataPedido.value) || new Date().toISOString().split('T')[0],
+                                                    hora_emissao: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                                                    nome_cliente: p.nomeCliente.value,
+                                                    telefone_cliente: p.telefoneCliente.value,
+                                                    estado: p.estado || 'PR',
+                                                    cidade: p.cidade || 'Curitiba',
+                                                    bairro: p.endereco?.bairro || '',
+                                                    endereco: p.endereco?.endereco || '',
+                                                    numero_end: p.endereco?.numero || '',
+                                                    observacao_endereco: p.endereco?.observacao || '',
+                                                    data_entrega_programada: '',
+                                                    hora_entrega_programada: '',
+                                                    total_liquido: p.totalLiquido.value,
+                                                    forma_pagamento: p.formaPagamento.value,
+                                                    itens: p.itens || [],
+                                                }));
+                                                setMultiOrders(mapped);
+                                                setCurrentMultiIndex(0);
+                                                alert(`Sucesso! ${mapped.length} pedidos combinados com os endereços.`);
+                                            } else {
+                                                alert('O PDF não foi reconhecido como um Lote Múltiplo.');
+                                            }
+                                        } catch (err) {
+                                            console.error(err);
+                                            alert('Erro ao processar PDF + CSV');
+                                        } finally {
+                                            setLoading(false);
+                                        }
+                                    }}
+                                    className="w-full mt-2 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-bold shadow-md transition-colors flex items-center justify-center gap-2"
+                                >
+                                    Puxar <ChevronRight size={18} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -22,4 +22,7 @@ router.delete('/:id', permissionMiddleware('excluir_pedido'), pedidoController.e
 // Rota de Upload de PDF
 router.post('/importar-pdf', permissionMiddleware('importar_pdf'), upload.single('pdf'), pedidoController.importarPdf);
 
+// Rota de Upload em Lote (PDF + CSV)
+router.post('/importar-lote', permissionMiddleware('importar_pdf'), upload.fields([{ name: 'pdf', maxCount: 1 }, { name: 'csv', maxCount: 1 }]), pedidoController.importarLote);
+
 module.exports = router;
