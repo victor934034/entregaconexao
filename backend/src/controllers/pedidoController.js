@@ -152,7 +152,7 @@ exports.importarLote = async (req, res) => {
 
         // 1. Processar PDF
         const pdfData = await parsePedidoPdf(pdfFile.path);
-        
+
         // 2. Processar CSV (Puxar buffer para string e quebrar em linhas)
         const fs = require('fs');
         const csvString = fs.readFileSync(csvFile.path, 'utf-8');
@@ -161,7 +161,7 @@ exports.importarLote = async (req, res) => {
         // Pular a primeira linha (cabeçalhos) se necessário, ou usar mapeamento direto
         // Assumindo as colunas do "Relatório LS.CSV" passadas na query
         const addressMap = new Map();
-        
+
         csvLines.forEach(line => {
             const cols = line.split(';'); // O separador do CSV geralmente é ; ou , em pt-BR
             if (cols.length > 10) {
@@ -172,7 +172,7 @@ exports.importarLote = async (req, res) => {
                 const cliente = cols[6]?.trim();
                 const bairro = cols[7]?.trim();
                 const municipio = cols[8]?.trim();
-                
+
                 // Buscar Logradouro (geralmente nas ultimas colunas) - 
                 // Vimos "Logradouro CEP Cód. Cliente" nas ultimas colunas. 
                 // Assumindo Logradouro como penultimo/antepenultimo
@@ -183,7 +183,7 @@ exports.importarLote = async (req, res) => {
                     // Adicionar por nome também para fallback
                     if (cliente) {
                         // Salva uppercase pra buscas case-insensitive
-                        addressMap.set(cliente.toUpperCase(), { nf, bairro, municipio, uf, logradouro }); 
+                        addressMap.set(cliente.toUpperCase(), { nf, bairro, municipio, uf, logradouro });
                     }
                 }
             }
@@ -194,7 +194,7 @@ exports.importarLote = async (req, res) => {
             pdfData.pedidos = pdfData.pedidos.map(pedido => {
                 const numeroPDF = pedido.numeroPedido.value;
                 const nomePDF = pedido.nomeCliente.value.toUpperCase();
-                
+
                 // Buscar no MAP (primeiro por NF, depois por nome)
                 let addrInfo = addressMap.get(numeroPDF);
                 if (!addrInfo) {
@@ -211,11 +211,15 @@ exports.importarLote = async (req, res) => {
                     // Update the order with CSV address data
                     let enderecoParsed = addrInfo.logradouro;
                     let numParsed = '';
-                    
+
                     if (enderecoParsed.includes(',')) {
                         const parts = enderecoParsed.split(',');
                         enderecoParsed = parts[0].trim();
                         numParsed = parts[1].trim();
+                    }
+
+                    if (!pedido.endereco) {
+                        pedido.endereco = {};
                     }
 
                     pedido.endereco.endereco = enderecoParsed;
@@ -223,7 +227,10 @@ exports.importarLote = async (req, res) => {
                     pedido.endereco.bairro = addrInfo.bairro;
                     pedido.cidade = addrInfo.municipio;
                     pedido.estado = addrInfo.uf;
-                    pedido.nomeCliente.value = addrInfo.cliente || pedido.nomeCliente.value; // Preferir nome completo do CSV
+                    // Preferir nome completo do CSV
+                    if (addrInfo.cliente) {
+                        pedido.nomeCliente = { value: addrInfo.cliente, ...pedido.nomeCliente };
+                    }
                 }
 
                 return pedido;
