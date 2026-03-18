@@ -155,36 +155,76 @@ exports.importarLote = async (req, res) => {
 
         // 2. Processar CSV (Puxar buffer para string e quebrar em linhas)
         const fs = require('fs');
-        const csvString = fs.readFileSync(csvFile.path, 'utf-8');
-        const csvLines = csvString.split('\n');
+        const buffer = fs.readFileSync(csvFile.path);
 
-        // Pular a primeira linha (cabeçalhos) se necessário, ou usar mapeamento direto
-        // Assumindo as colunas do "Relatório LS.CSV" passadas na query
+        // Decodificar Windows-1252 (Latin-1) manualmente para lidar com caracteres brasileiros
+        let csvString = '';
+        for (let i = 0; i < buffer.length; i++) {
+            const b = buffer[i];
+            if (b < 128) csvString += String.fromCharCode(b);
+            else if (b === 0xe3) csvString += 'ã';
+            else if (b === 0xf5) csvString += 'õ';
+            else if (b === 0xe7) csvString += 'ç';
+            else if (b === 0xed) csvString += 'í';
+            else if (b === 0xe1) csvString += 'á';
+            else if (b === 0xe9) csvString += 'é';
+            else if (b === 0xfa) csvString += 'ú';
+            else csvString += String.fromCharCode(b); // Fallback básico
+        }
+
+        const csvLines = csvString.split(/\r?\n/);
         const addressMap = new Map();
 
-        csvLines.forEach(line => {
-            const cols = line.split(';'); // O separador do CSV geralmente é ; ou , em pt-BR
-            if (cols.length > 10) {
-                // Estrutura provável:
-                // Ordem(0)|Sit. Pedido(1)|Nota Fiscal(2)|Data/Hora(3)|Estado(4)|Tipo(5)|Cliente - Razão Social(6)|Bairro(7)|Municipio(8)...Logradouro|CEP|Cód. Cliente
-                const nf = cols[2]?.trim();
-                const uf = cols[4]?.trim();
-                const cliente = cols[6]?.trim();
-                const bairro = cols[7]?.trim();
-                const municipio = cols[8]?.trim();
+        csvLines.forEach((line, index) => {
+            if (index === 0 || !line.trim()) return;
 
-                // Buscar Logradouro (geralmente nas ultimas colunas) - 
-                // Vimos "Logradouro CEP Cód. Cliente" nas ultimas colunas. 
-                // Assumindo Logradouro como penultimo/antepenultimo
-                const logradouro = cols[cols.length - 3]?.trim() || cols[cols.length - 4]?.trim() || '';
-
-                if (nf || cliente) {
-                    addressMap.set(nf, { cliente, bairro, municipio, uf, logradouro });
-                    // Adicionar por nome também para fallback
-                    if (cliente) {
-                        // Salva uppercase pra buscas case-insensitive
-                        addressMap.set(cliente.toUpperCase(), { nf, bairro, municipio, uf, logradouro });
+            // Parser robusto char-a-char para lidar com aspas e espaços múltiplos
+            const cols = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') inQuotes = !inQuotes;
+                else if (char === ' ' && !inQuotes) {
+                    if (current.trim() || (i > 0 && line[i - 1] === '"')) {
+                        cols.push(current.trim());
+                        current = '';
                     }
+                } else current += char;
+            }
+            if (current.trim()) cols.push(current.trim());
+
+            if (cols.length >= 8) {
+                const nf = cols[2]?.trim();
+                const cliente = cols[6]?.trim();
+                const municipio = cols.length > 15 ? cols[8]?.trim() : cols[7]?.trim();
+
+                let logradouro = '';
+                let bairro = cols[7]?.trim();
+
+                // Localizar rua dinamicamente (pode estar em colunas diferentes)
+                const addrIdx = cols.findIndex((c, i) => i > 8 && (
+                    c.toUpperCase().startsWith('RUA ') ||
+                    c.toUpperCase().startsWith('R ') ||
+                    c.toUpperCase().startsWith('AV ') ||
+                    c.toUpperCase().startsWith('AVENIDA ') ||
+                    c.toUpperCase().startsWith('RODOVIA ')
+                ));
+
+                if (addrIdx !== -1) {
+                    logradouro = cols[addrIdx];
+                    if (bairro === municipio) bairro = '';
+                } else if (cols.length > 13) {
+                    // Fallback se não achou prefixo (geralmente posição 13 ou 16)
+                    logradouro = cols[13] || cols[16] || '';
+                }
+
+                if (nf) {
+                    const nfNormalizada = nf.replace(/^0+/, '');
+                    addressMap.set(nfNormalizada, { cliente, bairro, municipio, logradouro });
+                }
+                if (cliente) {
+                    addressMap.set(cliente.toUpperCase(), { nf, bairro, municipio, logradouro });
                 }
             }
         });
@@ -192,15 +232,13 @@ exports.importarLote = async (req, res) => {
         // 3. Mesclar Dados (Somente se for Multi (lote))
         if (pdfData.isMulti && pdfData.pedidos) {
             pdfData.pedidos = pdfData.pedidos.map(pedido => {
-                const numeroPDF = pedido.numeroPedido.value;
-                const nomePDF = pedido.nomeCliente.value.toUpperCase();
+                const numeroPDF = (pedido.numeroPedido?.value || '').replace(/^0+/, '');
+                const nomePDF = (pedido.nomeCliente?.value || '').toUpperCase();
 
-                // Buscar no MAP (primeiro por NF, depois por nome)
                 let addrInfo = addressMap.get(numeroPDF);
                 if (!addrInfo) {
-                    // Fallback para nome aproximado
                     for (const [key, val] of addressMap.entries()) {
-                        if (typeof key === 'string' && key.includes(nomePDF) || nomePDF.includes(key)) {
+                        if (typeof key === 'string' && (key.includes(nomePDF) || nomePDF.includes(key))) {
                             addrInfo = val;
                             break;
                         }
@@ -208,31 +246,23 @@ exports.importarLote = async (req, res) => {
                 }
 
                 if (addrInfo) {
-                    // Update the order with CSV address data
-                    let enderecoParsed = addrInfo.logradouro;
+                    let enderecoParsed = addrInfo.logradouro || '';
                     let numParsed = '';
-
                     if (enderecoParsed.includes(',')) {
                         const parts = enderecoParsed.split(',');
                         enderecoParsed = parts[0].trim();
                         numParsed = parts[1].trim();
                     }
 
-                    if (!pedido.endereco) {
-                        pedido.endereco = {};
-                    }
-
+                    if (!pedido.endereco) pedido.endereco = {};
                     pedido.endereco.endereco = enderecoParsed;
-                    pedido.endereco.numero = numParsed;
+                    pedido.endereco.numero = numParsed || pedido.endereco.numero || 'S/N';
                     pedido.endereco.bairro = addrInfo.bairro;
                     pedido.cidade = addrInfo.municipio;
-                    pedido.estado = addrInfo.uf;
-                    // Preferir nome completo do CSV
                     if (addrInfo.cliente) {
                         pedido.nomeCliente = { value: addrInfo.cliente, ...pedido.nomeCliente };
                     }
                 }
-
                 return pedido;
             });
         }
