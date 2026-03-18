@@ -326,14 +326,14 @@ async function parseListaEntrega(text) {
     const orders = [];
 
     const boundaryPoints = [];
-    const boundaryRegex = /(\n\s{2}|\r\s{2})\d{3}\s{5,}(\d{5,})/g;
+    const boundaryRegex = /(\n\s{2,20}|\r\s{2,20})\d{1,3}\s{3,}(\d{5,})/g;
     let match;
     while ((match = boundaryRegex.exec(text)) !== null) {
         boundaryPoints.push({ index: match.index, nf: match[2] });
     }
 
     if (boundaryPoints.length === 0) {
-        const aggressiveRegex = /\d{3}\s{10,}(\d{5,})/ig;
+        const aggressiveRegex = /\d{1,3}\s{5,}(\d{5,})/ig;
         while ((match = aggressiveRegex.exec(text)) !== null) {
             boundaryPoints.push({ index: match.index, nf: match[1] });
         }
