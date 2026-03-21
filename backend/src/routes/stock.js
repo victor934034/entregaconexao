@@ -177,6 +177,17 @@ router.delete('/products/:id', async (req, res) => {
     }
 });
 
+router.get('/version', (req, res) => {
+    res.json({
+        success: true,
+        version: {
+            latestVersion: "1.0.2",
+            minVersion: "1.0.0",
+            apkUrl: "https://app-backend.zdc13k.easypanel.host/uploads/apk/app-release.apk"
+        }
+    });
+});
+
 // Transactions Endpoints
 router.get('/transactions', async (req, res) => {
     try {
