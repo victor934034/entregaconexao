@@ -51,6 +51,9 @@ app.get('/api/debug-logs', (req, res) => {
 // Serve PDFs route
 app.use('/uploads/pdfs', express.static(path.join(__dirname, '../uploads/pdfs')));
 
+// Serve APK updates route
+app.use('/uploads/apk', express.static(path.join(__dirname, '../uploads/apk')));
+
 // Test route para verificar se o roteamento /api funciona
 app.get('/api/test', (req, res) => {
     res.json({ message: 'Roteamento /api funcionando' });

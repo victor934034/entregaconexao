@@ -7,10 +7,9 @@ const router = express.Router();
 // "minVersion" is the minimum version code the app requires to function without forcing update
 // "apkUrl" is the direct URL to download the new APK
 const CURRENT_APP_INFO = {
-    latestVersion: "1.0.1",
+    latestVersion: "1.0.2",
     minVersion: "1.0.0",
-    apkUrl: "https://github.com/dudushy/GestaoItemsApp/releases/latest/download/app-release.apk"
-    // Example github releases URL.
+    apkUrl: "https://app-backend.zdc13k.easypanel.host/uploads/apk/app-release.apk"
 };
 
 router.get('/', (req, res) => {
